@@ -1,0 +1,320 @@
+--npcmanager.givehuntroutine(npc,target,timeout) target= npc/'player'/'hostage'
+
+
+function summontroops()
+	raidmodule.firstsummon(npcmanager,hostages,id)
+end
+
+function mapreset()--resets go here
+	
+end
+
+function Explosion()
+	shotmanager.MakeExplosion(120,Vector3.new(-142.625, 3.375, 90.75),0.2,30,100,script.Parent.barr,'Explosive')
+end
+function buff1(npc)
+	npc.Humanoid.WalkSpeed=25
+	npc.Humanoid.MaxHealth=150
+	npc.Humanoid.Health=150
+	local vest= models.vest
+	if vest~=nil then
+		local new2= vest:Clone()
+		new2.Parent=npc
+	end	
+end
+function gamecheck(playersinraid,maxhostagesdone,hostagecount,done,troops,minimumtroops)
+	if playersinraid>0 then
+		if ((maxhostagesdone<=hostagecount and maxhostagesdone>done) or troops>minimumtroops) or raidmodule.checkconds()==false then
+			return(true)
+		else
+			return(false)
+		end
+	else
+		return(false)
+	end
+end
+
+function killrescuemission()
+	local event2threshhold= 11
+	local minimumtroops= 0 --number of troops needed to be reduced to.
+	local maxhostagesdone = 0  --number of hostages needed to be saved.
+	
+	
+	local alive= 0
+	local done= 0
+	local hostagecount=2
+	while true do
+		--raidmodule.reset(min,max)
+		mapreset() --does nothing rn, was used in city exp: spawning truck models
+		while raidmodule.getraidingplayers(min,max)<=0 do --not raidmodule.withinpoint(mid,100) do --only enable raid if nearby players
+			wait(5)
+		end
+		summontroops()
+		wait(0.3)
+		local event2called=false
+		local troops=12
+		local playersinraid=10
+		--while cond1.Value==false do
+		--	wait(4)
+		--end
+		while gamecheck(playersinraid,maxhostagesdone,hostagecount,done,troops,minimumtroops) do
+			troops= raidmodule.gettroops(troops,revealthresh,min,max,id) --ignoring min,max incase they go outta bounds
+			hostagecount, done, alive= raidmodule.gethostages(minh,maxh)
+			playersinraid= raidmodule.getraidingplayers(min,max)
+			if troops<event2threshhold and event2called==false then
+				event2called=true
+			end
+			wait(4)
+		end
+		raidmodule.reset(min,max)
+		if troops<=minimumtroops and hostagecount>=maxhostagesdone and hostagecount==alive then
+			raidmodule.rewardplayers()			
+			print('W')
+			wait(cooldown)
+		else
+			wait(failcooldown)
+		end
+	end
+end
+function taskbasedmission()
+	while true do
+		while raidmodule.getraidingplayers(min,max)<=0 do --not raidmodule.withinpoint(mid,100) do --only enable raid if nearby players
+			wait(5)
+		end
+		summontroops()
+		local playersinraid=10
+		while playersinraid>0 and raidmodule.checkconds()==false do
+			playersinraid= raidmodule.getraidingplayers(min,max)
+			wait(5)
+		end
+		raidmodule.reset(min,max)
+		if raidmodule.checkconds()==true then
+			raidmodule.rewardplayers()
+			wait(cooldown)
+		end
+	end
+end
+function keyevent(number,condition)
+	if condition==nil then
+		condition= script.Parent.Conditions:FindFirstChild('Cond'..tostring(number))
+	end
+	if condition~=nil then
+		if condition.Value==true then
+			if number==1 then
+				--raidmodule.changemusic('Snitching')
+				local npcs= npcmanager.spawntroops('Hostile',CFrame.new(0,10,210),'',2,{'M1911'},workspace.clashcombat.NPCconfigs.Mobile)
+			elseif number==2 then
+				for i=1, 5 do
+					local npcs= npcmanager.spawntroops('Hostile',CFrame.new(0,10,210),'',1,{'M1911'},workspace.clashcombat.NPCconfigs.Mobile)
+				end	
+			elseif number==3 then
+				for i=1, 4 do
+					local npcs= npcmanager.spawntroops('Hostile',CFrame.new(0,10,210),'',4,{'Remington 870'},workspace.clashcombat.NPCconfigs.Mobile)
+				end
+			elseif number==4 then
+				for i=1, 5 do
+					local npcs= npcmanager.spawntroops('Hostile',CFrame.new(0,10,210),'',1,{'M1911'},workspace.clashcombat.NPCconfigs.Mobile)
+				end
+			end
+		end
+	end
+end
+function timedevent(timer,troops,continuenumber)
+	if troops<=continuenumber then
+		timer=timer+1
+		if timer==4 then
+			keyevent(1,nil)
+			local npcinfo= {'Hostile',nil,'Sandstorm soldier',1,{'MP5'},script.Parent.Rconfigs.Mobile,nil,nil,id}
+			raidmodule.distributesols(npcinfo,npcmanager,false,3,positions.rpositions1)
+			
+			--event1()
+		elseif timer==8 then
+			local npcinfo= {'Hostile',nil,'Sandstorm soldier',1,{'MP5'},script.Parent.Rconfigs.Mobile,nil,nil,id}
+			raidmodule.distributesols(npcinfo,npcmanager,false,5,positions.rpositions1)
+			--event1()
+		elseif timer==12 then
+			local npcinfo= {'Hostile',nil,'Sandstorm soldier',1,{'MP5'},script.Parent.Rconfigs.Mobile,nil,nil,id}
+			raidmodule.distributesols(npcinfo,npcmanager,false,10,positions.rpositions1)
+		end
+	else
+		--
+	end
+	return(timer)
+end
+function event1()--EXAMPLE FOR TIMED/WAVE MISSIONS
+	for i=1, 2 do
+		local npcs= npcmanager.spawntroops('Hostile',CFrame.new(0,10,210),'Rioter',2,{'M1911'},workspace.clashcombat.NPCconfigs.Mobile)
+		local car= npcmanager.deploycar('Humvee',CFrame.new(0,10,200),Vector3.new(0,5,80))
+		npcmanager.putincar(npcs,car)
+		wait(1)
+	end
+end
+function timebasedmission()
+	while true do
+		local maxtime= 60 --timelength of raid, must be above last key event.
+		local mintroopscontinue= 0 --minimum enemies to move to next wave
+		local minimumtroops=0 --minimum enemies to reduce to at end of game
+		
+		local troops=0
+		local timer= 0
+		local playersinraid=10
+		--while cond1.Value==false do for raidmusictrigger
+		--	wait(10)
+		--end
+		while raidmodule.getraidingplayers(min,max)<=0 do --only enable raid if nearby players
+			wait(5)
+		end
+		wait(8)
+		while playersinraid>0 and (troops>minimumtroops or timer<maxtime) do --PLAYERS ALL DEAD OR KEEP SPAWNING TIL END
+			playersinraid= raidmodule.getraidingplayers(min,max)
+			troops= raidmodule.gettroops(troops,revealthresh,min,max,id)
+			timer= timedevent(timer,troops,mintroopscontinue)
+			wait(1)
+		end
+		print('RAIDEND')
+		print(timer)
+		raidmodule.clearnpcs(min,max,id)
+		raidmodule.reset(min,max)
+		if playersinraid>0 then--raidmodule.checkconds()
+			print('W')
+			raidmodule.rewardplayers(min,max)
+			wait(cooldown)
+		else
+			--Consequences of loss
+		end
+	end
+end
+function controlpoint()-- recommended x0.25 damage (large npc teams)
+	local timeoccupied=0
+	local controlstate= script.Parent.ControlState
+	local troops=revealthresh+1 --stop immediate reveal
+	local maxtroops= raidmodule.getmaxtroops()
+	local control=0
+	local controltime= 120
+	raidmodule.restorepersonel(npcmanager)
+	local heat=2
+	local percentagesign= script.Parent.Point.BillboardGui.Percentage
+	local timeoutcount=0
+	raidmodule.clearmarkers()
+	local uselimit=0
+	--
+	while true do
+		while raidmodule.withinpoint(mid,300) do --only enable raid if nearby players
+			if controlstate.Value==false then
+				timeoutcount=timeoutcount+1
+				local playersinraid= raidmodule.getraidingplayers(min,max)
+				local troops, total= raidmodule.gettroops(troops,revealthresh,min,max,id)
+				local heat= 1-(total/ maxtroops)
+				if troops<=0 and playersinraid>0 then
+					control= control+8
+					if control>120 then
+						control, heat= raidmodule.changepoint(true,controlstate)
+						raidmodule.changemusic('Frostbite','Battle')
+						raidmodule.radio('ALERT:',"We've taken control of the site.")
+						raidmodule.rewardplayers(min,max,2147751722,badge)
+						uselimit=0
+						--raidmodule.removedeviatingnpcs(id)
+						wait(1)
+						raidmodule.radio('ALERT:',"Clear the remaining troops.")
+					end
+				elseif control>0 then
+					control= control-2
+				else
+					control=0
+					if timeoutcount>5 then
+						--raidmodule.removedeviatingnpcs()
+					end
+				end
+				percentagesign.Text= math.floor((control/controltime)*100)..'%'
+				if heat>0.05 and timeoutcount>5 then--5
+					local squadsummon= math.floor(heat*8)--8
+					raidmodule.summonsquad(npcmanager,heat,squadsummon,id)
+					timeoutcount=0
+				end
+			else
+				local playersinraid= raidmodule.getraidingplayers(min,max)
+				local troops= raidmodule.gettroops(troops,revealthresh,min,max,id)
+				if troops>0 and playersinraid<=0 then
+					control= control+8
+					if control>120 then
+						control, heat= raidmodule.changepoint(false,controlstate)
+						raidmodule.restorepersonel(npcmanager,id)
+						raidmodule.radio('ALERT:','We no longer have control of the site.')
+						wait(1)
+						raidmodule.radio('ALERT:','Take back control of the territory.')
+						raidmodule.changemusic('Frostbite','Battle')
+					end
+				elseif control>0 then
+					control= control-4
+				else
+					control=0
+				end
+				percentagesign.Text= math.floor((control/controltime)*100)..'%'
+				local troops, tottroops= raidmodule.gettroops(troops,revealthresh,min,max,id)
+				if tottroops<3 then
+					if heat>1 then
+						raidmodule.changemusic('Frostbite','Battle')
+						if heat>4 then
+							raidmodule.rewardplayers(nil,nil,2147773219,badge)
+							raidmodule.radio('ALERT:','The large convoy was stopped.')
+						elseif heat>2 then
+							raidmodule.rewardplayers(nil,nil,2147751779,badge)
+							raidmodule.radio('ALERT:','The site is stable once again.')
+						end
+					end
+					wait(15+(heat*5))
+					raidmodule.radio('ALERT:','A large convoy is approaching the site. Be prepared to stand your ground.',Color3.new(1,1,0))
+					wait(15+heat)
+					if heat==4 then
+						raidmodule.radio('ALERT:','Very large number of vehicles incoming.',Color3.new(1,0,0))
+					end
+					raidmodule.changemusic('Demolitiona')
+					raidmodule.raidwave(heat,npcmanager,id)
+					heat=heat+1
+				end
+			end
+			wait(3)
+		end
+		raidmodule.clearnpcs(min,max,id)
+		wait(7)
+	end
+end
+
+cooldown=script.wincooldown.Value
+failcooldown=script.failcooldown.Value
+revealthresh= script.revealthreshold.Value
+
+
+npcmanager= require(workspace.clashcombat.Modules.Npcmanager)
+shotmanager= require(workspace.clashcombat.Modules.Shotmanagerv2)
+raidmodule= require(script.Parent.Raidmodule)
+audio= script.Parent.Audio
+count= script.Parent.Npccount
+models= script.Parent.models
+positions= script.Parent.Positions
+routes= script.Parent.Routes
+conditions= script.Parent.Conditions
+conditionslist= conditions:GetChildren()
+areas= script.Parent.areas
+--cond1= conditions.Cond1
+min= areas.Min.Position
+mid= areas.Mid.Position
+max= areas.Max.Position
+minh= areas.Minh.Position
+maxh= areas.Maxh.Position
+id= script.npcID.Value
+if id=='0' then
+	id=nil
+end
+badge = game:GetService("BadgeService")
+for i=1, #conditionslist do
+	conditionslist[i].Changed:Connect(function()
+		local identifier= string.sub(conditionslist[i].Name,5,5)
+		keyevent(identifier,conditionslist[i])
+	end)
+end
+hostages={}
+raidmodule.clearmarkers()
+--killrescuemission()
+timebasedmission()
+--controlpoint()
