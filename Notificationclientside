@@ -1,0 +1,43 @@
+
+function notify(message,color,duration,altnotif)
+	local labeltemplate= script.Parent.notification
+	local constant=0.65
+	if altnotif~=nil then
+		local altlabel= script.Parent:FindFirstChild(altnotif)
+		if altlabel~=nil then
+			labeltemplate= altlabel
+			constant=0.25
+		end
+	end
+	local label= labeltemplate:Clone()
+	label.Parent= script.Parent.notifs
+	label.Text=message
+	label.Visible=true
+	--label.Position= labeltemplate.Position --unnecessary
+	if color~=nil then
+		label.TextColor3= color
+	end
+	local others= script.Parent.notifs:GetChildren()
+	--label.Name='Notif'..tostring(#others)
+	--local constant2=0.96
+	script.Parent.Sound:Play()
+	for i=1, 30 do
+		--label.Position = UDim2.new(0.1,0,constant2-(((i*constant)/1000)),0)
+		label.Position= label.Position - UDim2.new(0,0,(i*constant)/1000,0)
+		for j=1, #others do
+			if others[j].Name==label.Name then
+				others[j].Position= others[j].Position -  UDim2.new(0,0,(constant*5)/1000,0)
+			end
+		end
+		wait(0.02)
+	end
+	if duration~=nil then
+		wait(duration)
+	else
+		wait(4)
+	end
+	--label.Position = UDim2.new(0,0,0,0)
+	label:Destroy()
+end
+game.ReplicatedStorage.Notification.OnClientEvent:Connect(notify)
+script.Parent.clientclient.Event:Connect(notify)
