@@ -1,0 +1,111 @@
+function partition(d,g,v,h)
+	local numer= math.abs(2*g*h*(v^2) + (g^2*d^2))
+	local denom= v^2
+	local b= d^2
+	local p = math.sqrt(math.abs(b- (numer/denom)))
+	return p
+end
+function calculateangle(initialspeed,float,startpos,endpos)
+	local gravityacceleration= -(1-float)*196.2
+	local verticaldistance=  endpos.Y-startpos.Y
+	local totaldistance= (startpos-endpos).Magnitude
+	local horizontaldistance= math.sqrt(totaldistance^2 - verticaldistance^2)
+	local p= partition(horizontaldistance,gravityacceleration,initialspeed,verticaldistance)
+	local x1= ( (initialspeed^2) * (horizontaldistance+ p) )  /  (gravityacceleration* (horizontaldistance^2))
+	local x2= ( (initialspeed^2) * (horizontaldistance- p) )  /  (gravityacceleration* (horizontaldistance^2))
+	local horizontalunitvector= CFrame.new(startpos,Vector3.new(endpos.X,startpos.Y,endpos.Z))
+	horizontalunitvector= horizontalunitvector.LookVector
+	return math.atan(x1), math.atan(x2), totaldistance, horizontalunitvector
+end
+function needprojaim(tconfig,tool)
+	if tconfig.Projectile.Value~=nil then
+		local pconfig= tool:FindFirstChild('ProjectileConfiguration')
+		if pconfig~=nil then
+			if pconfig.Float.Value~=1 then
+				return pconfig.Speed.Value, pconfig.Float.Value
+			else
+				return false, false
+			end
+		else
+			return false, false
+		end
+	else
+		return false, false
+	end
+end
+function getaimedpos(theta,totaldistance,cframe,horizontalunitvector)
+	local height= math.abs(math.sin(theta)*totaldistance)
+	local horiz= math.abs(math.cos(theta)*totaldistance)
+	local displacement= (horizontalunitvector*horiz)+Vector3.new(0,height,0)
+	local target= cframe+ displacement
+	return(target)
+end
+function aim(handle,target,tconfig,tool)
+	local cframe= CFrame.new(handle.Position,target.CFrame.Position)
+	local speed, float= needprojaim(tconfig,tool)
+	if speed~=false then
+		local theta1, theta2, totaldist, horizontalunitvector= calculateangle(speed,float,handle.Position,target.Position)
+		theta2= (math.pi/2) - theta1
+		cframe= getaimedpos(theta2,totaldist,cframe,horizontalunitvector)
+	else
+		cframe= CFrame.new(target.Position)* cframe.Rotation
+	end
+	return(cframe)
+end
+function firetool()
+	local tool= script.Parent:FindFirstChildOfClass('Tool')
+	if tool~=nil then
+		local event= tool:FindFirstChild('serverinput')
+		if event~=nil then
+			local utpoint=nil
+			local tconfig= tool:FindFirstChild('Configuration')
+			local firerate= tconfig:FindFirstChild('Firespeed').Value
+			local handle= tool.Handle
+			local target= config.Target.Value
+			script.Parent.HumanoidRootPart.BodyGyro.MaxTorque= Vector3.new(0,100000,0)
+			script.Parent.HumanoidRootPart.BodyGyro.CFrame= CFrame.new(script.Parent.HumanoidRootPart.Position,target.Position)
+			wait(config.Reactiontime.Value)
+			local laser= tconfig:FindFirstChild('Laser')
+			if laser~=nil then
+				laser=laser.Value
+			end
+			if laser==true then
+				utpoint= tconfig:FindFirstChild('Utpoint').Value
+				utpoint.Laserdest.CFrame= target.CFrame
+				utpoint.Laser.Enabled=true
+				targetattachment= target:FindFirstChildOfClass('Attachment')
+				if targetattachment~=nil then
+					utpoint.Align.Attachment1=targetattachment
+				end
+			end
+			if inuse==false then
+				inuse=true
+				while config.Firing.Value==true do
+					local cframe= aim(handle, target,tconfig,tool)
+					--local cframe= CFrame.new(handle.Position,target.CFrame.Position)
+					--cframe= CFrame.new(target.Position)* cframe.Rotation
+					event:Fire(script.Parent.Humanoid,cframe,target)
+					script.Parent.HumanoidRootPart.BodyGyro.CFrame= CFrame.new(script.Parent.HumanoidRootPart.Position,target.Position)
+					if laser==true then
+						utpoint.Laserdest.CFrame= target.CFrame
+					end
+					wait(firerate)
+				end
+				script.Parent.HumanoidRootPart.BodyGyro.MaxTorque= Vector3.new(0,0,0)
+				inuse=false
+				if laser==true then
+					utpoint.Laser.Enabled=false
+					if targetattachment~=nil then
+						utpoint.Align.Attachment1=utpoint.Laserdest.Attachment
+					end
+				end
+			end
+		else
+			tool:Activate()
+		end
+	end
+end
+config= script.Parent:WaitForChild('Config')
+config.Firing.Changed:Connect(firetool)
+targetattachment=nil
+inuse=false
