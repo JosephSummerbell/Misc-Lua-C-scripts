@@ -1,0 +1,387 @@
+
+function completelyrandomloc()
+	if math.random(1,3)==1 then
+		return(Vector3.new(math.random(-222,222),2,math.random(-222,222)))
+
+	else
+		return(Vector3.new(math.random(-190,190),2,math.random(-190,190)))
+	end
+end
+function nearbyloc()
+	local nextloc= script.Parent.Head.Position+Vector3.new(math.random(-10,10),0,math.random(-10,10))
+	return nextloc
+end
+function home(night)
+	local nextloc=script.Parent.Home.Value.PrimaryPart.Position+Vector3.new(math.random(-10,10),0,math.random(-10,10))
+	if night==true or script.Parent.Humanoid.Health<80 then
+		local houselocs= script.Parent.Home.Value.Locations:GetChildren()
+		nextloc= houselocs[math.random(1,#houselocs)].Value.Position
+	end
+	return(nextloc)
+end
+function conditionedplaces()
+	return(nil)
+end
+--function getchances()
+--	local lochances= {}
+--	local template= script.Parent.Locationchances:GetChildren()
+--	local total=0
+--	local infected= script.Parent.Humanoid:FindFirstChild('covid')
+--	local mood= script.Parent.Mood.Value+ workspace.mains.NPCmood.Value
+--	local angry= mood<-2
+--	local danger= workspace.mains.Dangerlevel.Value>2
+--	for i=1, #template do
+--		local current= template[i]
+--		local percentage= current.Default.Value
+--		if infected then
+--			percentage= percentage+current.Infadd.Value
+--		end
+--		if danger then
+--			percentage= percentage+current.dangadd.Value
+--		end
+--		if angry then
+--			percentage= percentage+current.moodadd.Value
+--		end
+--		if percentage>0 then
+--			total= total+percentage
+--			table.insert(lochances,{current,total})
+--		end
+--	end
+--	return lochances,total
+--end
+--function randomplaces()
+--	--locchances, total= getchances()
+--	local wanderchance= math.random(1,total)
+--	local rcount=1
+--	local place=nil
+--	while wanderchance>locchances[rcount][2] and rcount<#locchances do
+--		rcount=rcount+1
+--		wait(0.01)
+--	end
+--	--if validplace(locchances[count][1]) then
+--	--	place= locchances[count]
+--	--else
+--	--	table.remove(locchances,count)
+--	--	place= randomplaces()
+--	--end
+--	local place= locchances[rcount][1]
+--	return(returnpoint(place))
+--end
+--function returnpoint(place)
+--	local name= place.Name
+--	if string.sub(name,1,1)=='0' then
+--		return(place.location.Value)
+--	elseif name=='1Random' then
+--		return(completelyrandomloc())
+--	elseif string.sub(name,1,1)=='2' then
+--		return(place.location.Value+Vector3.new(math.random(-10,10),0,math.random(-10,10)))
+--	end
+--end
+function wander()
+	return(nearbyloc())
+	--return(nextloc)
+end
+function getmostimportanttask()
+	local tasks= script.Parent.routines:GetChildren()
+	if #tasks==0 then
+		return(nil)
+	else
+		local currenttask= tasks[1]
+		for i=1, #tasks do
+			if tasks[i].Weight.Value>currenttask.Weight.Value then
+				currenttask= tasks[i]
+			end
+		end
+		return(currenttask)
+	end
+end
+function nearbydestination(destination,limit)
+	local origin= script.Parent.Head.Position
+	local mag= (origin-destination).Magnitude
+	if mag<limit then
+		return(true)
+	else
+		return(false)
+	end
+end
+function getnextkeyspot(lastspot)
+	if lastspot~=nil then
+		local nextv= lastspot:FindFirstChild('Next')
+		if nextv~=nil then
+			local nextsp= nextv.Value
+			if nextsp~=nil then
+				return nextsp, 0.75
+			end
+		end
+	end
+	if  config.Wanderlocations.Value~=nil then
+		local spots= config.Wanderlocations.Value:GetChildren()
+		if #spots>0 then
+			local randspot= spots[math.random(1,#spots)]
+			return randspot, 0.5
+		else
+			return nil, oldweight
+		end
+	else
+		return nil, oldweight
+	end
+end
+function managetask(ctask,count)
+	local location=nil
+	local weight=nil
+	if ctask.Track.Value~=nil then
+		location=ctask.Track.Value.Position
+		weight= ctask.Weight.Value
+	else
+		location=ctask.Place.Value
+		weight= ctask.Weight.Value
+	end
+	if ctask.Priority.Value==false then
+		ctask:Destroy()
+	elseif nearbydestination(ctask.Place.Value,ctask.Maxdistance.Value)==true then
+		ctask:Destroy()
+	elseif ctask.Timeout.Value==true and count>ctask.Tries.Value then
+		ctask:Destroy()
+	end
+	return location, weight
+end
+function initialcheck(magnitude)
+	if config.movestatus.Value==2 then
+		movementcount=movementcount+1
+		return true, movementcount
+	end
+	if magnitude<5 then
+		movementcount=movementcount+1
+		return true, movementcount
+	else
+		movementcount=0
+		if config.movestatus.Value==1 then
+			local newtask= getmostimportanttask()
+			if newtask~=nil then
+				if newtask.Weight.Value>oldweight then
+					return true, movementcount
+				end
+			end
+		end
+	end
+	return false, movementcount
+end
+function determinenextlocation(magnitude)
+	local check, count= initialcheck(magnitude)
+	if check==true then
+		local nextloc= script.Parent.Head.Position
+		local newtask= getmostimportanttask()
+		lastspot, weight= getnextkeyspot(lastspot)
+		if newtask~=nil then
+			pickedlocation, weight = managetask(newtask,count)
+		else
+			if count>timeout then
+				if script.Parent.Humanoid.Sit==true and config.Canjump.Value==true  then
+					script.Parent.Humanoid.Jump=true
+				end
+				if lastspot~=nil then
+					pickedlocation= lastspot.Position
+				elseif config.Wander.Value==true then
+					pickedlocation= wander()
+					weight=0.25
+					wait(2)
+				end
+			else
+				--pickedlocation= oldlocation
+				weight=oldweight
+			end
+		end
+		if (weight~=oldweight or weight<1 or weight==0.75) then --pickedlocation~=oldlocation-weight~=oldweight-----------------
+			config.Nextlocation.Value=pickedlocation
+		elseif movementcount>timeout then
+			config.Nextlocation.Value=pickedlocation +Vector3.new(math.random(-1,1),0,math.random(-1,1))
+		end
+		--oldlocation= pickedlocation
+		if script.Vehiclecheck.Value==true then
+			local carlocation= vehiclecheck(pickedlocation)
+			if carlocation~=nil then
+				script.Parent:SetPrimaryPartCFrame(CFrame.new(carlocation))
+			end
+		end
+		oldweight=weight
+	end
+end
+function vehiclecheck(location)
+	if (script.Parent.Head.Position-location).Magnitude>150 then--150
+		local workspacelot= workspace:GetChildren()
+		for i=1, #workspacelot do
+			if workspacelot[i]:FindFirstChild('Seats') then
+				local build= workspacelot[i]:FindFirstChild('Build')
+				if build~=nil then
+					if build.VehicleSeat.Occupant==nil then
+						if (script.Parent.Head.Position-build.VehicleSeat.Position).Magnitude<25 then
+							build.Parent.Config.Setlocation.Value=location
+							return(build.VehicleSeat.Position)
+						end
+					end
+				end
+			end
+		end
+	end
+end
+function npcvalid(npc)
+	local player= game.Players:FindFirstChild(npc.Name)
+	local team= npc:FindFirstChild('Team')
+	if player~=nil and team==nil then
+		team=  player.TeamColor
+	elseif team~=nil then
+		team= team.Value
+	end
+	if team~=nil then
+		if team==script.Parent.Team.Value or (team==BrickColor.new('Bright green') and script.Parent.Team.Value~=BrickColor.new('New Yeller')) then
+			return(false)
+		else
+			return(true)
+		end
+	else
+		return(true)
+	end
+end
+function wallcheck(npc)
+	local head= npc.Head
+	local tempCFrame= CFrame.new(script.Parent.Head.Position, head.Position)
+	local Shoot = false
+	local Ray = Ray.new(script.Parent.Head.Position, tempCFrame.LookVector*config.Range.Value)
+	local Wall, HitPosition, Normal, Material = workspace:FindPartOnRay(Ray, script.Parent)
+	if Wall~=nil and Wall.Parent~=npc and Wall.Parent~=script.Parent and Wall.Parent.Parent~= npc then
+		if attackvehicles==true then
+			if Wall.Anchored==false then
+				return(false)
+			else
+				return(true)
+			end
+		else
+			return(true)
+		end
+	else
+		return(false)
+	end
+end
+function sightcheck(npc)
+	local furtherpos= script.Parent.Head.Position+script.Parent.Head.CFrame.LookVector*1
+	local headpos= script.Parent.Head.Position
+	local targpos= npc.Head.Position
+	local dist= (headpos-targpos).Magnitude
+	local furthdist= (furtherpos-targpos).Magnitude
+	if furthdist<dist or script.Parent.Name=='Karen' then
+		return(wallcheck(npc))
+	else
+		return(true)
+	end
+end
+function checklist(pos,list,npctarget,dist,object)
+	for i = 1, #list do
+		local NPC = list[i]
+		if NPC.ClassName == "Model" then
+			local torso = NPC:findFirstChild("HumanoidRootPart")
+			local humanoid = NPC:findFirstChild("Humanoid")
+			if torso ~= nil and humanoid ~= nil and (humanoid.Health > 0) then
+				if (torso.Position - pos).magnitude < dist and sightcheck(NPC)==false and npcvalid(NPC)==true then
+					npctarget=torso
+					dist = (torso.Position - pos).magnitude
+				end
+			end
+		end
+	end
+	return npctarget
+end
+function findNearestTorso(pos)
+	local npctarget=nil
+	local dist = config.Range.Value
+	local list=workspace:GetChildren()
+	npctarget= checklist(pos,list,npctarget,dist)
+	return npctarget
+end
+function callouttarget()
+	
+end
+config= script.Parent:WaitForChild('Config')
+wait(0.5)
+npcmanager= require(workspace.clashcombat.Modules.Npcmanager)
+--targetting= require(workspace.clashcombat.Modules.Targetting)
+timeout= config.Timeout.Value
+chase= config.Chase.Value
+memory= config.Memoryduration.Value
+defect= config.Walkspeedsub.Value
+reactdefect= config.Reactiontimeadd.Value
+attackvehicles= config.Attackvehicles.Value
+config.Reactiontime.Value=config.Reactiontime.Value+reactdefect
+
+humanoid= script.Parent.Humanoid
+humanoid.WalkSpeed=humanoid.WalkSpeed+defect
+movementcount=0
+--refreshcount=0
+lastspot=nil
+spotted=false
+--total= 90
+--locchances = {{'Random',100}}
+--locchances, total= getchances()
+local waittime= script.timepercheck.Value
+--oldlocation=Vector3.new(0,0,0)
+oldweight=0
+weight=0
+pickedlocation=Vector3.new(0,0,0)
+lasttarget=nil
+memcount=0
+old= script.Parent.Head.Position
+
+while true do --wait time moved to bottom
+	new=script.Parent.Head.Position
+	magnitude=(new-old).magnitude
+	determinenextlocation(magnitude)
+	if config.Hostile.Value==true then
+		target =findNearestTorso(script.Parent.PrimaryPart.Position)
+		--target= targetting.findNearestTorso(script.Parent.PrimaryPart.Position,config,script.Parent)
+		if target~=nil then
+			config.Target.Value= target
+			config.Firing.Value=true
+			if lasttarget==nil then
+				callouttarget()
+			end
+			if spotted==false then
+				humanoid.WalkSpeed=humanoid.WalkSpeed-defect
+				config.Reactiontime.Value=config.Reactiontime.Value-reactdefect
+				spotted=true
+			end
+			lasttarget= target
+			config.LastTarget.Value=target
+			if config.Fightstyle.Value==1 then
+				npcmanager.createroutine(script.Parent,'Target',3,target.Position,nil,false,false,3,1,false)
+			elseif config.Fightstyle.Value==2 then
+				local face= CFrame.new(target.Position,script.Parent.PrimaryPart.Position).LookVector
+				npcmanager.createroutine(script.Parent,'Target',3,lasttarget.Position+face*5,nil,false,false,3,1,false)
+			elseif config.Fightstyle.Value==3 then
+				local forwardvector= CFrame.new(script.Parent.PrimaryPart.Position, target.Position).LookVector*5
+				humanoid:MoveTo(target.Position+forwardvector)
+				--npcmanager.createroutine(script.Parent,'Target',3,target.Position,nil,false,false,3,1,false)
+				--script.Parent.Humanoid:MoveTo(target.Position)
+			end
+		else
+			config.Firing.Value=false
+			config.Target.Value=nil
+			memcount=memcount+waittime
+			if memcount>memory then
+				spotted=false
+				config.LastTarget.Value=nil
+				humanoid.WalkSpeed=humanoid.WalkSpeed+defect
+				config.Reactiontime.Value=config.Reactiontime.Value+reactdefect
+				memcount=0
+			end
+			if lasttarget~=nil and chase>0 then
+				if chase>1 then
+					npcmanager.createroutine(script.Parent,'Target',3,lasttarget.Position,lasttarget,false,true,3,3,false)
+				else--1
+					npcmanager.createroutine(script.Parent,'Target',3,lasttarget.Position,nil,false,false,3,1,true)
+				end
+				lasttarget=nil
+			end
+		end
+	end
+	old=new
+	wait(waittime)
+end
