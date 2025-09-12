@@ -1,0 +1,298 @@
+local module = {}
+module.getroomroster= function(mapfolder)
+	local stumps= mapfolder.Stumps:GetChildren()
+	local hmultirooms= mapfolder.Highmultirooms:GetChildren()
+	local multirooms= mapfolder.Multirooms:GetChildren()
+	local Duorooms= mapfolder.Duorooms:GetChildren()
+	local singlerooms= mapfolder.Singlerooms:GetChildren()
+	local duosandsingles= module.concatenateTables({Duorooms,singlerooms})
+	local mostrooms= module.concatenateTables({duosandsingles,multirooms})
+	local allrooms= module.concatenateTables({mostrooms,hmultirooms})
+	return allrooms, mostrooms, duosandsingles, singlerooms, Duorooms, stumps
+end
+module.concatenateTables= function(tables)
+	local result = {}
+	for i=1, #tables do
+		for _, v in ipairs(tables[i]) do
+			table.insert(result, v)
+		end
+	end
+	return result
+end
+module.getalldoors= function(branch)
+	local doorprts= {}
+	for i=1, #branch do
+		local enterances= branch[i].Enterances:GetChildren()
+		doorprts= module.concatenateTables({doorprts,enterances})
+	end
+	return doorprts
+end
+module.assignrandomdoorcf= function(room,alt)
+	--local doors=nil
+	--if alt==1 then
+	--	doors= room.Connectors:GetChildren()
+	--else
+	local doors= room.Enterances:GetChildren()
+	--end
+	local door= doors[math.random(1,#doors)]
+	room.PrimaryPart= door
+end
+module.deployrandomroom= function(rooms,door)
+	local newroom=rooms[math.random(1,#rooms)]
+	local new= newroom:Clone()
+	new.Parent= workspace.Map
+	module.assignrandomdoorcf(new)
+	new:SetPrimaryPartCFrame(door.CFrame*CFrame.Angles(0,math.pi,0))
+	return new
+end
+module.makerope= function(PartA,PartB)
+	local new= Instance.new('RopeConstraint')
+	new.Parent= PartA
+	local new2= Instance.new('Attachment')
+	new2.Parent= PartA
+	local new3= Instance.new('Attachment')
+	new3.Parent= PartB
+	new.Attachment0= new2
+	new.Attachment1= new3
+	new.Color= BrickColor.new('Magenta')
+	new.Visible=true
+end
+module.filldoors= function(rooms,doors,stumps)
+	--local allroommodels= workspace.Map:GetChildren()
+	local currentbranch= {}
+	for i=1, #doors do
+		local allroommodels= workspace.Map:GetChildren()
+		local new= module.deployrandomroom(rooms,doors[i])
+		--Have to re-get this on loop so rooms on same loop don't overlap!
+		local check, room=module.roomoverlaps(new,allroommodels)
+		if check==true then
+			new:Destroy()
+			local solved=false
+			if room~=nil then
+				local connectors= room:FindFirstChild('Connectors')
+				if connectors~=nil then
+					local connector= connectors:FindFirstChildOfClass('Part')
+					if connector~=nil then
+						print('Part found')
+						local crange= (connector.Position- doors[i].Position).Magnitude
+						if crange<3 then
+							print('Alternative room made from block!')
+							local lroom= module.alternativeroom(connector)
+							table.insert(currentbranch,lroom)
+							lroom.PrimaryPart:Destroy()
+							solved=true
+						else
+							if crange<20 then
+								connector.Color= Color3.new(1,0,1)
+							elseif crange<40 then
+								connector.Color= Color3.new(1,1,0)
+							else
+								connector.Color= Color3.new(0,0,1)
+							end
+							print('----------')
+							module.makerope(connector,doors[i])
+							print('R2')
+							print(room.Name)
+							print('R1')
+							print(doors[i].Parent.Parent.Name)
+							print(crange)
+						end
+					end
+				end
+				local enterances= room:FindFirstChild('Enterances')
+				if enterances~=nil then
+					local crossdoors= room.Enterances:GetChildren()
+					for j=1, #crossdoors do
+						if (crossdoors[j].Position- doors[i].Position).Magnitude<3 then
+							print('STUMP CLEARED for enterance')
+							print(room.Name)
+							room:Destroy()
+							solved=true
+						end
+					end
+				end
+			else
+				print('Colliding room nil?')
+			end
+			
+			if solved==false then
+				local new2= module.deployrandomroom(stumps,doors[i])
+				table.insert(currentbranch,new2)
+				new2.PrimaryPart:Destroy()
+			end
+		else
+			table.insert(currentbranch,new)
+			new.PrimaryPart:Destroy()
+		end
+	end
+	return currentbranch
+end
+module.removerooms= function(branch)
+	for i=1, #branch do
+		branch[i]:Destroy()
+	end
+end
+module.Getminmax= function(room)
+	local cf, size= room:GetBoundingBox()
+	local differentialvector= (cf.LookVector*size.Z*0.5) + (cf.UpVector*size.Y*0.5) + (cf.RightVector*size.X*0.5)
+	local min= cf.Position- differentialvector
+	local max= cf.Position+ differentialvector
+	return min, max
+end
+module.getcorners= function(room)
+	local cf, size= room:GetBoundingBox()
+	local cornerbuffer=0.8
+	local xc=(cf.RightVector*size.X*0.5)*cornerbuffer
+	local yc= (cf.UpVector*size.Y*0.5)*cornerbuffer
+	local zc=(cf.LookVector*size.Z*0.5)*cornerbuffer
+	local p= cf.Position
+	--1+4+8 corners of a cube (2^3) 000 to 111, 4 in middle
+	--the extra 4 are very important as cubes adjacent on one axis WILL not be detected!.
+	--extra 1 is centre point incase
+	return {p+xc+yc+zc, p+xc+yc-zc, p+xc-yc+zc, p+xc-yc-zc,p-xc+yc+zc,p-xc+yc-zc,p-xc-yc+zc,p-xc-yc-zc,
+		p+xc+zc,p+xc-zc,p-xc+zc,p-xc-zc,
+		p
+	}
+end
+module.boundcheck= function(point,min,max)
+	if point.X>min.X and point.Y>min.Y and point.Z>min.Z and point.X<max.X and point.Y<max.Y and point.Z<max.Z then
+		return true
+	end
+end
+module.getboundinfo= function(room)
+	local cf, size= room:GetBoundingBox()
+	local sx=size.X*0.5
+	local sy= size.Y*0.5
+	local sz= size.Z*0.5
+	return sx, sy, sz, cf
+end
+module.localcoordsboundcheck= function(point,cf,sx,sy,sz)--important detail here; two cubes can be intertwined and not be detected as their points align with each other
+	local localpoint= cf:PointToObjectSpace(point)-- <= prevents this but also prevents any room placement cause they're aligned
+	local buffera=0.1
+	if math.abs(localpoint.X)+buffera<sx and math.abs(localpoint.Y)+buffera<sy and math.abs(localpoint.Z)+buffera<sz then-- solution? use 4 extra middle points in middle of cube, also have a tiny buffer
+		return true
+	end
+end
+module.makemarkers= function(listofpoints,color)
+	for i=1, #listofpoints do
+		local new= Instance.new('Part')
+		new.Parent= workspace.Baseplate
+		new.Anchored=true
+		new.Position= listofpoints[i]
+		new.Material= Enum.Material.Neon
+		new.Shape= Enum.PartType.Ball
+		new.Size= Vector3.new(3,3,3)
+		if color~=nil then
+			new.Color= color
+		end
+	end
+end
+module.roomoverlaps= function(room,rooms) --worried cause bounding box checks a little heavy (lots of number crunching)
+	local corners= module.getcorners(room)
+	--module.makemarkers(corners)
+	for i=1, #rooms do
+		local min,max= module.Getminmax(rooms[i])
+		--module.makemarkers({min,max},Color3.new(1,0,0))
+		local sx,sy,sz,cf = module.getboundinfo(rooms[i])
+		
+		for i=1, #corners do
+			if module.localcoordsboundcheck(corners[i],cf,sx,sy,sz)==true then
+				module.makemarkers(corners)
+				module.makemarkers({min,max},Color3.new(1,0,0))
+				--print('CROSS')
+				return true, rooms[i]
+			end
+		end
+	end
+	return false
+end
+module.mapbranch= function(currentbranch,allrooms,roomcount,maxrooms,singlerooms,stumps,oldbranch)
+	local doors= module.getalldoors(currentbranch)
+	if #doors==0 then --dead ends have capped the way, reason we need to pass the oldbranch
+		print('Blocked by single')
+		module.removerooms(currentbranch)
+		module.mapbranch(oldbranch,allrooms,roomcount,maxrooms,singlerooms,stumps,currentbranch)
+	elseif (maxrooms-roomcount)>#doors then --keep filling until room limit
+		roomcount= roomcount+#doors
+		local newbranch= module.filldoors(allrooms,doors,stumps)
+		module.mapbranch(newbranch,allrooms,roomcount,maxrooms,singlerooms,stumps,currentbranch)
+	else --fill remaining stumps with dead ends
+		local currentbranch= module.filldoors(singlerooms,doors,stumps)
+	end
+end
+module.getlistofconnectors= function(map)
+	local rooms= map:GetChildren()
+	local allconnectors= {}
+	for i=1, #rooms do
+		local connectors= rooms[i]:FindFirstChild('Connectors')
+		if connectors~=nil then
+			local connectorslist= connectors:GetChildren()
+			allconnectors= module.concatenateTables({allconnectors,connectorslist})
+		end
+	end
+	return allconnectors
+end
+module.assignconnectorprimary= function(room)
+	local connectordoor= room:FindFirstChild('Connectordoor')
+	if connectordoor~=nil then
+		if connectordoor.Value~=nil then
+			room.PrimaryPart= connectordoor.Value
+			return
+		end
+	end
+	if room.PrimaryPart==nil then
+		print('RANDOMDOORCF ASSIGNED FOR ALTERNATIVE LOOP ROOM, SET PRIMARY PART TO CONNECTING DOOR')
+		module.assignrandomdoorcf(room)
+	end
+end
+module.alternativeroom= function(connector)
+	local alternativeroom= connector.Parent.Parent:FindFirstChild('Loopalternative')
+	if alternativeroom~=nil then
+		if alternativeroom.Value~=nil then
+			local new= alternativeroom.Value:Clone()
+			new.Parent= workspace.Map
+			module.assignconnectorprimary(new)
+			new:SetPrimaryPartCFrame(connector.CFrame)
+			connector.Parent.Parent:Destroy() --old room remove
+			return new
+		else
+			print('No alternative room set for loop!')
+		end
+	end
+end
+module.connectifpossible= function(conA,conB)
+	if (conA.Position-conB.Position).Magnitude<3 then
+		module.alternativeroom(conA)
+		module.alternativeroom(conB)
+	end
+end
+module.makeloops= function()
+	local map= workspace.Map
+	local listofconnectors= module.getlistofconnectors(map)
+	for i=1, #listofconnectors do 
+		for j=i+1, #listofconnectors do--dont check twice and don't check self
+			module.connectifpossible(listofconnectors[i],listofconnectors[j])
+		end
+	end
+	--for i=1, #listofconnectors do 
+	--	listofconnectors[i]:Destroy()
+	--end
+end
+module.makemap= function(mapfolder)
+	--Check all doors
+	local allrooms, mostrooms, duosandsingles, singlerooms, Duorooms, stumps= module.getroomroster(mapfolder)
+	local starterroom= workspace.Rooms.Starterroom.Value
+	if starterroom==nil then
+		starterroom= allrooms[math.random(1,#allrooms)]
+	end
+	local new= starterroom:Clone()
+	new.Parent= workspace.Map
+	module.assignrandomdoorcf(new)
+	new:SetPrimaryPartCFrame(CFrame.new(50,1,0))
+	local currentbranch= {new}
+	local maxrooms= mapfolder.Settings.Rooms.Value
+	local roomcount=0
+	module.mapbranch(currentbranch,allrooms,roomcount,maxrooms,singlerooms,stumps,nil)
+	module.makeloops()
+end
+return module
