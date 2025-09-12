@@ -1,0 +1,570 @@
+local module = {}
+module.clearmarkers= function()
+	local positions= script.Parent.Positions
+	local routes= script.Parent.Routes
+	local areas= script.Parent.areas
+	local allpositions= positions:GetChildren()
+	for i=1, #allpositions do
+		local indivpos= allpositions[i]:GetChildren()
+		for j=1, #indivpos do
+			indivpos[j].Transparency=1
+			indivpos[j].SurfaceGui.Enabled=false
+			indivpos[j].BillboardGui.Enabled=false
+		end
+	end
+	local allroutes= routes:GetChildren()
+	for i=1, #allroutes do
+		local indivpos= allroutes[i]:GetChildren()
+		for j=1, #indivpos do
+			indivpos[j].Transparency=1
+			indivpos[j].SurfaceGui.Enabled=false
+			indivpos[j].BillboardGui.Enabled=false
+		end
+	end
+	local areaslist= areas:GetChildren()
+	for i=1, #areaslist do
+		areaslist[i].Transparency=1
+		areaslist[i].BillboardGui.Enabled=false
+	end
+end
+module.applyid= function(npcs,id)
+	if id~=nil then
+		for k=1, #npcs do
+			local new= Instance.new('StringValue')
+			new.Parent= npcs[k]
+			new.Name= id
+		end
+	end
+end
+module.distributesols= function(npcinfo,npcmanager,onepernode,count,positions)
+	local rpositions1= positions:GetChildren()
+	local npcs= nil
+	for i=1, count do
+		local randnum= math.random(1,#rpositions1)
+		local random= rpositions1[randnum]
+		npcs= npcmanager.spawntroops(npcinfo[1],random.CFrame,npcinfo[3],npcinfo[4],npcinfo[5],npcinfo[6],npcinfo[7],npcinfo[8],npcinfo[9])
+		if onepernode==true then
+			table.remove(rpositions1,randnum)
+		end
+	end
+	return npcs
+end
+module.firstsummon= function(npcmanager,hostages,id)
+	local positions= script.Parent.Positions
+	local count= script.Parent.Npccount
+	local routes= script.Parent.Routes
+	local rpositions1= positions.rpositions1:GetChildren()
+	local rpositions2= positions.rpositions2:GetChildren()
+	local mpositions3= positions.mpositions3:GetChildren()
+	local mpositions4= positions.mpositions4:GetChildren()
+	local positions5= positions.positions5:GetChildren()
+	local positions6= positions.positions6:GetChildren()
+	local count1= count.randpos1count.Value
+	local count2= count.randpos2count.Value
+	local npcs=nil
+	--table.insert(hostages,npcs[1]) --for hostages
+	for i=1, count1 do
+		local randnum= math.random(1,#rpositions1)
+		local random= rpositions1[randnum]
+		npcs= npcmanager.spawntroops('Hostile',random.CFrame,'Hostile Soldier',1,{'M24'},workspace.clashcombat.NPCconfigs.Sentry,nil,nil,id)
+		table.remove(rpositions1,randnum)
+	end
+	for i=1, count2 do
+		local randnum= math.random(1,#rpositions2)
+		local random= rpositions2[randnum]
+		npcs= npcmanager.spawntroops('Hostile',random.CFrame,'Hostile Soldier',1,{'AK47'},workspace.clashcombat.NPCconfigs.Sentry,nil,nil,id)
+		--module.applyid(npcs,id)
+		table.remove(rpositions2,randnum)
+	end
+	for i=1, #mpositions3 do
+		npcs= npcmanager.spawntroops('Hostile',mpositions3[i].CFrame,'Hostile Soldier',1,{'AK47'},workspace.clashcombat.NPCconfigs.Mobile,nil,nil,id)
+		npcs[1].Humanoid.WalkSpeed=18
+		npcs[1].Config.Wanderlocations.Value= routes.patrolr 
+	end
+	for i=1, #mpositions4 do
+		npcs= npcmanager.spawntroops('Hostile',mpositions4[i].CFrame,'Hostile Soldier',1,{'AK47'},workspace.clashcombat.NPCconfigs.Mobile,nil,nil,id)
+		npcs[1].Config.Wanderlocations.Value= routes.patrolr2 
+	end
+	for i=1, #positions5 do
+		local randnum= math.random(1,#positions5)
+		local random= positions5[randnum]
+		npcs= npcmanager.spawntroops('Hostile',random.CFrame,'Hostile Soldier',1,{'AK47'},workspace.clashcombat.NPCconfigs.Sentry,nil,nil,id)
+		--local new= game.ServerStorage.clashserv.NPCs.AAgun:Clone()
+		--new.Parent= workspace
+		--new:SetPrimaryPartCFrame(positions5[i].CFrame)
+		--new.Loadturret.Enabled=true
+	end
+	for i=1, #positions6 do
+		npcs= npcmanager.spawntroops('Hostage',positions6[i].CFrame,'Hostage',1,{},workspace.clashcombat.NPCconfigs.Hostage,nil,nil,id)
+		npcs[1].Humanoid.WalkSpeed=22
+		table.insert(hostages,npcs[1]) --for hostages
+	end
+	if hostages~=nil then
+		return(hostages)
+	end
+end
+module.resetconds= function()
+	local conditionslist= script.Parent.Conditions:GetChildren()
+	for i=1, #conditionslist do
+		conditionslist[i].Value=false
+	end
+end
+module.checkconds= function()
+	local conditionslist= script.Parent.Conditions:GetChildren()
+	if #conditionslist==0 then
+		return true
+	end
+	local count=0
+	for i=1, #conditionslist do
+		if conditionslist[i].Value==true then
+			count=count+1
+		end
+	end
+	if count==#conditionslist then
+		return true
+	end
+	return false
+end
+module.checkcond= function(number)
+	local condname= 'Cond'..tostring(number)
+	local condition= script.Parent.Conditions:FindFirstChild(condname)
+	if condition~=nil then
+		return(condition.Value)
+	end
+end
+module.clearnpcs= function(min,max,id)
+	local lot= workspace:GetChildren()
+	local count=0
+	for i=1, #lot do	
+		local test= lot[i]:FindFirstChild('Reveal')
+		local idc= test--for localised raids
+		if id~=nil then
+			idc= lot[i]:FindFirstChild(id)
+		end
+		if test~=nil and idc~=nil then
+			if min~=nil and max~=nil then
+				
+				if module.rangecheck(lot[i].PrimaryPart.Position,min,max) then
+					lot[i]:Destroy()
+				end
+			else
+				lot[i]:Destroy()
+			end
+		end
+	end
+end
+module.reset= function(min,max)
+	module.resetconds()
+	module.clearnpcs(min,max)
+end
+module.rangecheck= function(pos,min,max)
+	if pos.X>min.X and pos.Z>min.Z and pos.Z<max.Z and pos.X<max.X then
+		return(true)
+	end
+	return(false)
+end
+module.gettroops= function(lasttroops,revealthresh,min,max,id)
+	local lot= workspace:GetChildren()
+	local count=0
+	local total=0
+	for i=1, #lot do
+		local test= lot[i]:FindFirstChild('Reveal')
+		local team= lot[i]:FindFirstChild('Team')
+		local idc= test --for localised raids
+		if id~=nil then
+			idc= lot[i]:FindFirstChild(id)
+		end
+		if test~=nil and team~=nil and idc~=nil then
+			if lot[i].Humanoid.Health>0 and team.Value==BrickColor.new('Really red') then
+				if min~=nil and max~=nil then
+					total= total+1
+					if module.rangecheck(lot[i].PrimaryPart.Position,min,max) then
+						count=count+1
+					end
+				else
+					count=count+1
+				end
+				if lasttroops~=nil and revealthresh~=nil then
+					if lasttroops<revealthresh then
+						test.Enabled=true
+					end
+				end
+			end
+		end
+	end
+	return count,total
+end
+module.pickvehicle= function(heat,spawns)
+	local vehicles={}
+	if heat>0.75 then
+		vehicles= {'Blackhawk','Bomber','Chinook','Fighter','Littlebird','Blackhawk','Littlebird'}
+	elseif heat>0.6 then
+		vehicles= {'Blackhawk','Littlebird','convoytruck'}
+	elseif heat>0.45 then
+		vehicles= {'tank','Humvee','Atv','convoytruck','Littlebird','Blackhawk'}
+	elseif heat>0.25 then
+		vehicles= {'Humvee','Atv','convoytruck','Littlebird'}
+	else
+		vehicles= {'Atv','Humvee'}
+	end
+	local vehiclename= vehicles[math.random(1,#vehicles)]
+	local vehicle= game.ServerStorage.clashserv.Vehicles:FindFirstChild(vehiclename)
+	if vehicle~=nil then
+		local spawnpos, spawnpart= module.getspawnfromvehiclename(vehiclename)
+		local seats= vehicle.Seats:GetChildren()
+		local setdest=true
+		if vehicle.Config.Setlocation.Value~=Vector3.new(0,0,0) or vehicle.Config.Settrace.Value~=nil then
+			setdest=false
+		end
+		return vehiclename, spawnpos, #seats+1, setdest, spawnpart
+	else
+		local spawnpos, spawnpart= module.getspawnfromvehiclename('convoytruck')
+		return 'convoytruck',spawnpos, 12, true, spawnpart
+	end
+end
+module.getspawnfromvehiclename= function(vehiclename)--risky function, lots of potential nil
+	local vehicle= game.ServerStorage.clashserv.Vehicles:FindFirstChild(vehiclename)
+	local spawnname= vehicle.Config.Type.Value
+	local spawnpos, spawnpart= module.pickrandomspawn(spawnname)
+	return spawnpos, spawnpart
+end
+module.pickrandomspawn= function(spawnname)
+	local spawns= script.Parent.Positions:FindFirstChild(spawnname..'spawns'):GetChildren()
+	local spawnpart= spawns[math.random(1,#spawns)]
+	local spawnpos= spawnpart.CFrame
+	return spawnpos, spawnpart
+end
+module.summonsquad= function(npcmanager,heat,squad,spawns, id)
+	local vehicle, spawnpos, seatcount, setdest, spawnpart= module.pickvehicle(heat,spawns)
+	local destination=nil
+	if setdest==true then
+		destination= module.pickrandomspawn('Base').Position
+	else
+		local setcheck= spawnpart:FindFirstChild('Dest')
+		if setcheck~=nil then
+			destination= setcheck.Value.Position
+		end
+	end
+	local npcs= module.selectnpcs(npcmanager,heat,squad,spawnpos,id)
+	if npcs~=nil then
+		if #npcs>0 then
+			local split= math.ceil(#npcs/seatcount)
+			local npcsplit=nil
+			for i=1, split do
+				local b=((i-1)*seatcount)+1
+				if i*seatcount>=#npcs then
+					--npcsplit= table.pack(npcs,((i-1)*seatcount)+1,#npcs)
+					npcsplit={}
+					for j=b, #npcs do
+						table.insert(npcsplit,npcs[j])
+					end
+				else
+					--npcsplit= table.pack(npcs,((i-1)*seatcount)+1,i*seatcount)
+					npcsplit={}
+					for j=b, (i*seatcount) do
+						table.insert(npcsplit,npcs[j])
+					end
+				end
+				local car= npcmanager.deploycar(vehicle,spawnpos,destination)
+				--print('Split')
+				for k=1, #npcsplit do
+					--print(npcsplit[k])
+					--print(npcsplit[k].Name)
+				end
+				npcmanager.putincar(npcsplit,car)
+			end
+		end
+	end
+	--npcs= npcmanager.spawntroops('Hostile',spawnpos,'Hostile Soldier',1,{'M24'},workspace.clashcombat.NPCconfigs.Sentry,vehicle)
+end
+module.restorepersonel= function(npcmanager,id)
+	local personlists= script.Parent.Basepersonel:GetChildren()
+	for i=1, #personlists do
+		local weaponlist= module.makeweaponlist(personlists[i].Weapons)
+		local pos=personlists[i].Position.Value
+		if pos.ClassName=='Folder' then
+			local selection= pos:GetChildren()
+			for j=1, personlists[i].Count.Value do
+				local random= npcmanager.returnrandom(1,#selection)
+				pos= selection[random]
+				local npcs= npcmanager.spawntroops(personlists[i].Npctemplate.Value.Name,pos.CFrame,personlists[i].Name,1,weaponlist,personlists[i].Config.Value,nil,nil,id)
+			end
+		else
+			local npcs= npcmanager.spawntroops(personlists[i].Npctemplate.Value.Name,pos.CFrame,personlists[i].Name,personlists[i].Count.Value,weaponlist,personlists[i].Config.Value,nil,nil,id)
+		end
+	end
+	module.extranpcs(npcmanager)
+end
+module.extranpcs= function(npcmanager)
+	--local npcs= npcmanager.spawntroops('Hostile',CFrame.new(139.9, 36, -46.2),'Anti Air Troop',1,{'RPG'},workspace.clashcombat.NPCconfigs.Sniper)
+	--for i=1, 4 do
+	--	local npcs= npcmanager.spawntroops('Hostile',CFrame.new(139.9, 36, -46.2),'Scout',1,{'MP5','Radio'},workspace.clashcombat.NPCconfigs.Sniper)
+	--end	
+end
+module.selectnpcs= function(npcmanager,heat,squad,spawnpos,id)
+	local currentsquad={}
+	local timeout=0
+	while #currentsquad<squad and timeout<3 do
+		local npctype, amount= module.getlackingnpcs(heat)
+		local difference= amount- (squad-#currentsquad)
+		if difference>0 then
+			amount=amount-difference
+		end
+		if npctype~=nil then
+			local weaponlist= module.makeweaponlist(npctype.Weapons)
+			local npcs= npcmanager.spawntroops(npctype.Npctemplate.Value.Name,spawnpos,npctype.Name,amount,weaponlist,npctype.Config.Value,nil,nil,id)
+			table.move(npcs,1,#npcs,#currentsquad+1,currentsquad)
+		end
+		timeout= timeout+1
+	end
+	return(currentsquad)
+end
+module.makeweaponlist= function(weapons)
+	local weaponsg= weapons:GetChildren()
+	local neww= {}
+	for i=1, #weaponsg do
+		table.insert(neww,0)
+	end
+	for i=1, #weaponsg do
+		local identifier= tonumber(string.sub(weaponsg[i].Name,1,1))
+		local weapon= string.sub(weaponsg[i].Name,2,#weaponsg[i].Name)
+		neww[identifier]= weapon
+		--table.insert(neww,weaponsg[i].Name)
+	end
+	return(neww)
+end
+module.getlackingnpcs= function(heat)
+	local npcs= workspace:GetChildren()
+	local personel= script.Parent.Basepersonel
+	local personlists= personel:GetChildren()
+	for i=1, #personlists do
+		personlists[i].currentcount.Value=0
+	end
+	for i=1, #npcs do
+		local name= npcs[i].Name
+		local search= personel:FindFirstChild(npcs[i].Name)
+		if search~=nil then
+			search.currentcount.Value=search.currentcount.Value+1
+		end
+	end
+	--summing
+	local worst= 0
+	local chosennpc=nil
+	for i=1, #personlists do
+		local currentdeficiency= math.ceil(personlists[i].Count.Value*(heat+1))- personlists[i].currentcount.Value
+		if currentdeficiency>worst and personlists[i].Count.Value>1 then
+			worst= currentdeficiency
+			chosennpc= personlists[i]
+		end
+	end
+	return chosennpc, worst
+end
+module.getmaxtroops= function()
+	local npcgroup= script.Parent.Basepersonel:GetChildren()
+	local totalcount=0
+	for i=1, #npcgroup do
+		local count= npcgroup[i].Count.Value
+		totalcount= totalcount+count
+	end
+	return(totalcount)
+end
+module.gethostages= function(minh,maxh,id)
+	local lot= workspace:GetChildren()
+	local count=0
+	local alive=0
+	local done=0
+	for i=1, #lot do
+		local idc= count --for localised raids
+		if id~=nil then
+			idc= lot[i]:FindFirstChild(id)
+		end
+		if lot[i].Name=='Hostage' and idc~=nil then
+			local pos= lot[i].PrimaryPart.Position
+			if lot[i].Humanoid.Health<0 then
+				count=count+1
+				done=done+1
+			elseif module.rangecheck(pos,minh,maxh) then
+				count=count+1
+			else
+				alive= alive+1
+				count=count+1
+				done=done+1
+			end
+		end
+	end
+	return count,done, alive 
+end
+module.getraidingplayers= function(min,max)
+	local count=0
+	local players= game.Players:GetChildren()
+	for i=1, #players do
+		if players[i].Character~=nil then
+			local prime= players[i].Character.PrimaryPart
+			if prime~=nil then
+				local pos= prime.Position
+				if module.rangecheck(pos,min,max) then
+					count=count+1
+				end
+			end
+		end
+	end
+	return(count)
+end
+module.withinpoint= function(mpos,rad)
+	local players= game.Players:GetChildren()
+	for i=1, #players do
+		if players[i].Character~=nil then
+			local prime= players[i].Character.PrimaryPart
+			if prime~=nil then
+				local pos= prime.Position
+				if (pos-mpos).Magnitude<rad then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+module.givesheild= function(npc)
+	local new= game.ServerStorage.clashserv.models.othertools.Shield:Clone()
+	new.Parent=npc
+end
+module.rewardplayers= function(min,max,badgeid,badgeservice)
+	if badgeid==nil then
+		badgeid= script.Parent.Badge.Value
+	end
+	if badgeservice==nil then
+		badgeservice= game:GetService('BadgeService')
+	end
+	local players= game.Players:GetChildren()
+	for i=1, #players do
+		local prime= players[i].Character.PrimaryPart
+		if prime~=nil then
+			local pos= prime.Position
+			if min~=nil and max~=nil then
+				if pos.X>min.X and pos.Z>min.Z and pos.Z<max.Z and pos.X<max.X and script.Parent.Badge.Value~=nil then
+					badgeservice:AwardBadge(players[i].userId,badgeid)
+				end
+			else
+				badgeservice:AwardBadge(players[i].userId,badgeid)
+			end
+		end
+	end--victory
+end
+module.changemusic= function(maintrack,sidetrack,mode)
+	if mode==1 then
+		local audio= script.Parent.Audio:FindFirstChild(maintrack)
+		if audio==nil then
+			sidetrack.RaidCaudio.Playing=false
+			sidetrack.RaidCaudio.TimePosition=0
+		else
+			sidetrack.RaidCaudio.TimePosition=0
+			sidetrack.RaidCaudio.SoundId= audio.SoundId
+			sidetrack.RaidCaudio.Volume= audio.Volume
+			sidetrack.RaidCaudio.Playing=true
+		end
+		
+	else
+		if sidetrack~=nil then
+			workspace.Music.changemusic:Fire(workspace.Music.Musics:FindFirstChild(maintrack),workspace.Music.Musics:FindFirstChild(sidetrack))
+		else
+			workspace.Music.changemusic:Fire(workspace.Music.Musics:FindFirstChild(maintrack))
+		end
+	end	
+end
+module.changepoint= function(team,controlstate)
+	controlstate.Value=team
+	local id=nil
+	if team==true then
+		script.Parent.Point.BillboardGui.Percentage.TextColor3= Color3.fromRGB(255,200,200)
+		id= script.Parent.models.Proimage.Value
+	else
+		script.Parent.Point.BillboardGui.Percentage.TextColor3= Color3.fromRGB(200,200,255)
+		id= script.Parent.models.Antiimage.Value
+	end
+	local flagimages= script.Parent.Flags:GetChildren()
+	for i=1, #flagimages do
+		flagimages[i].Value.Texture= id
+	end
+	return 0,2
+end
+module.sendhunt= function(npcmanager,name,count,car)
+	local npcs= workspace:GetChildren()
+	local npclist= {}
+	local currentcount=0
+	for i=1, #npcs do
+		local nname= npcs[i].Name
+		if nname==name and currentcount<count then
+			table.insert(npclist,npcs[i])
+			currentcount= currentcount+1
+		end
+	end
+	local cframe= npcmanager.returnplayercframe()
+	local spawnedcar= npcmanager.deploycar(car,npclist[1].PrimaryPart.CFrame,cframe.Position)
+	npcmanager.putincar(npclist,spawnedcar)
+end
+module.raidwave= function(heat,npcmanager,id)
+	local positions= script.Parent.Positions
+	local npcs= npcmanager.spawntroops('Hostile',module.pickrandomspawn('Land'),'Troop',2,{'MP5'},workspace.clashcombat.NPCconfigs.Mobile,'Atv',nil,id)	
+	
+	for i=1, heat/2 do
+		npcs= npcmanager.spawntroops('Hostile',positions.Airspawns.convoy.CFrame,'Troop',3,{'midrandom','Frag grenade'},workspace.clashcombat.NPCconfigs.Mobile,'Littlebird',nil,id)
+		wait(4)
+	end
+	wait(2)
+	for i=1, heat/2 do
+		npcs= npcmanager.spawntroops('Hostile',positions.Landspawns.convoy.CFrame,'Troop',2,{'midrandom'},workspace.clashcombat.NPCconfigs.Mobile,'tank',nil,id)
+		wait(1.5)
+	end
+	for i=1, heat do
+		npcs= npcmanager.spawntroops('Hostile',positions.Landspawns.convoy.CFrame,'Troop',4+heat,{'AK47'},workspace.clashcombat.NPCconfigs.Mobile,'convoytruck',nil,id)
+		wait(1.5)
+	end
+	--for i=1, heat/3 do
+	--	npcs= npcmanager.spawntroops('Hostile',module.pickrandomspawn('Sea'),'Troop',5,{'lowrandom'},workspace.clashcombat.NPCconfigs.Mobile,'Patrol boat',nil,id)
+	--	wait(2)
+	--end
+	for i=1, heat/4 do
+		npcs= npcmanager.spawntroops('Hostile',positions.Airspawns.convoy.CFrame,'Troop',1,{'highrandom','Frag grenade'},workspace.clashcombat.NPCconfigs.Mobile,'Bomber',nil,id)
+		wait(5)
+	end
+	for i=1, heat/2 do
+		npcs= npcmanager.spawntroops('Hostile',positions.Airspawns.convoy.CFrame,'Troop',3,{'midrandom','Frag grenade'},workspace.clashcombat.NPCconfigs.Mobile,'Blackhawk',nil,id)
+		wait(4)
+	end
+	wait(2)
+	for i=1, heat/3 do
+		npcs= npcmanager.spawntroops('Hostile',positions.Airspawns.convoy.CFrame,'Troop',6,{'midrandom','Frag grenade'},workspace.clashcombat.NPCconfigs.Mobile,'Chinook',nil,id)
+		wait(4)
+	end
+	for i=1, heat/2 do
+		npcs= npcmanager.spawntroops('Hostile',positions.Airspawns.convoy.CFrame,'Troop',1,{'highrandom','Frag grenade'},workspace.clashcombat.NPCconfigs.Mobile,'Fighter',nil,id)
+		wait(5)
+	end
+end
+module.notify= function(message,color,duration)
+	game.ReplicatedStorage.Notification:FireAllClients(message,color,duration)
+end
+module.radio= function(sender,message,color)
+	game.ReplicatedStorage.Radio:FireAllClients(sender,message,color)
+end
+module.removedeviatingnpcs= function(id) --DONT USE FOR LOCALISED RAIDS (ITLL REMOVE OTHERS UNLESS USING ID SYSTEM)
+	local lot= workspace:GetChildren()
+	local point= script.Parent.Point.Position
+	for i=1, #lot do
+		local test= lot[i]:FindFirstChild('Reveal')
+		local idc= test --for localised raids
+		if id~=nil then
+			idc= lot[i]:FindFirstChild(id)
+		end
+		if test~=nil and idc~=nil then
+			local prime= lot[i].PrimaryPart
+			if prime~=nil then
+				if (lot[i].PrimaryPart.Position-point).Magnitude>1750 then
+					lot[i]:Destroy()
+				end
+			end
+		end
+	end
+end
+return module
