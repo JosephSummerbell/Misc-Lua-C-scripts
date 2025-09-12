@@ -1,0 +1,322 @@
+local module = {}
+module.sideslip= function(source,destination,path)
+	local checksource= module.raycast(source,source+Vector3.new(0,15,0))
+	local checkdest= module.raycast(destination,destination+Vector3.new(0,15,0))
+	if checkdest and checksource then
+		local blockpoint= module.raycast2(source,destination)
+		local difference= (source-destination).Magnitude
+		local cf= CFrame.new(source,destination)
+		for i=-2, 2 do --was -3, 3
+			local sideslip= cf.RightVector*i*(difference/8)
+			local newpoint= blockpoint+sideslip
+			if module.raycast(source,newpoint) and module.raycast(destination,newpoint) then
+				path= {CFrame.new(source),CFrame.new(newpoint),CFrame.new(destination)}
+				return(path)
+			end
+		end
+	end
+end
+module.makepath= function(source,destination)
+	local path= {}
+	--if true then
+	--	return(module.Astarpathfind(source,destination,40,40))
+	--end
+	if module.raycast(source,destination)==true then
+		path= {CFrame.new(source),CFrame.new(destination)}
+		return path
+	end
+	if (source-destination).Magnitude>15 then
+		local cb= workspace.Map.Custommap:FindFirstChild('Build')
+		local fold=nil
+		local astar=nil
+		local paths=nil
+		if cb~=nil then
+			fold= cb:FindFirstChild('Astarfold')
+			if fold~=nil then
+				astar= fold.Astarmap
+				paths= fold.Paths
+			end
+		end
+		local path= module.centralpathcheck(source,destination,paths)
+		if path==nil then
+			return(module.Astarpathfinding(source,destination,astar))
+		else
+			return(path)
+		end
+		--if path~=nil then
+		--	return(path)
+		--else
+		--	return(module.Astarpathfind(source,destination,40,40))
+		--end
+	else
+		path= module.sideslip(source,destination,path)
+		if path==nil then
+			--if module.raycast(source,destination)==true then
+			--	path= {CFrame.new(source),CFrame.new(destination)}
+			--	return path
+			--end
+			if module.raycast(source+Vector3.new(0,5,0),destination+Vector3.new(0,5,0))==true then
+				path= {CFrame.new(source),CFrame.new(destination)}
+				return path
+			end
+		else
+			return path
+		end
+	end
+
+end
+module.checktrainnode= function(targetloc,node,nodepos,prevnode)
+	if  module.raycast(targetloc,nodepos) then
+		return(node)
+	else
+		return(prevnode)
+	end
+end
+module.checknodes= function(nodes,source,destination,startdist,enddist)
+	local startnode=nil
+	local endnode=nil
+	for i=1, #nodes do
+		local nodepos=nodes[i].Position
+		if startnode==nil then
+			startnode= module.checktrainnode(source,nodes[i],nodepos,startnode)
+		else
+			local dist= (nodepos-source).Magnitude
+			if dist<startdist then
+				startnode= module.checktrainnode(source,nodes[i],nodepos,startnode)
+				startdist=dist
+			end
+		end
+		if endnode==nil then
+			endnode= module.checktrainnode(destination,nodes[i],nodepos,endnode)
+		else
+			local dist= (nodepos-destination).Magnitude
+			if dist<enddist then
+				endnode= module.checktrainnode(destination,nodes[i],nodepos,endnode)
+				enddist=dist
+			end
+		end
+	end
+	return startnode, endnode
+end
+module.checktrain= function(source,destination,mainpath,startdist,enddist)-- source,dest,map,startradiusdetect,destradiusdetect
+	local nodes= mainpath:GetChildren()
+	local startnode, endnode= module.checknodes(nodes,source,destination,startdist,enddist)
+	
+	if startnode~=nil and endnode~=nil then
+		local path={}
+		local startnum= tonumber(startnode.Name)
+		local endnum= tonumber(endnode.Name)
+		table.insert(path,CFrame.new(source))
+		if endnum>startnum then
+			for i=startnum, endnum do
+				local inode= mainpath:FindFirstChild(tostring(i))
+				table.insert(path,inode.CFrame)
+			end
+		else
+			for i=startnum, endnum, -1 do
+				local inode= mainpath:FindFirstChild(tostring(i))
+				table.insert(path,inode.CFrame)
+			end
+		end
+		table.insert(path,CFrame.new(destination))
+		return path,startdist,enddist
+	else
+		return(nil)
+	end
+end
+module.centralpathcheck= function(source,destination,paths)
+	local startdist=100
+	local enddist= 100
+	if paths==nil then
+		paths= script.Paths
+	end
+	local paths= paths:GetChildren()
+	local path=nil
+	for i=1, #paths do
+		local cpath, startdist, enddist= module.checktrain(source,destination,paths[i],startdist,enddist)
+		if cpath~=nil then
+			path=cpath
+		end
+	end
+	return(path)
+end
+
+module.raycast= function(pointA,pointB)
+	local difference= (pointA-pointB).Magnitude
+	local cf= CFrame.new(pointA,pointB)
+	local raycastResult = workspace:Raycast(pointA, cf.LookVector*difference)
+	if raycastResult then
+		if (raycastResult.Position-pointB).Magnitude<4 then
+			return(true)
+		else
+			return(false)
+		end
+	else
+		return(true)
+	end
+end
+module.raycast2= function(pointA,pointB)
+	local difference= (pointA-pointB).Magnitude
+	local cf= CFrame.new(pointA,pointB)
+	local raycastResult = workspace:Raycast(pointA, cf.LookVector*difference)
+	if raycastResult then
+		return(raycastResult.Position)
+	else
+		return(pointB) --should never happen
+	end
+end
+
+module.makemarker= function(pos)
+	local new= Instance.new('Part')
+	new.Parent= workspace.clashcombat.Projectiles
+	new.Anchored=true
+	new.CanCollide=false
+	new.Position= pos
+	new.Shape= Enum.PartType.Ball
+	new.Material= Enum.Material.Neon
+	new.Size= Vector3.new(0.5,0.5,0.5)
+	return(new)
+end
+module.checkformatch= function(nodesa,nodesb)
+	for i=1, #nodesa do
+		for j=1, #nodesb do
+			if nodesa[i]==nodesb[j] then
+				return true, nodesa[i]
+			end
+		end
+	end
+	return false, nil
+end
+module.checklist= function(node,nodes)
+	for i=1, #nodes do
+		if nodes[i]==node then
+			return(true)
+		end
+	end
+	return(false)
+end
+module.buildpathfromends= function(cstart,cend)
+	local postable= {}
+	for i=#cend, 1, -1 do
+		table.insert(cstart,cend[i])
+	end
+	for i=1, #cstart do
+		table.insert(postable,cstart[i].Position)
+	end
+	return(postable)
+end
+module.generatemap= function(startnode,map)
+	local newmap={}
+	for i=1, #map do
+		--local nodedist= (startnode.Position-map[i].Position).Magnitude
+		if map[i]==startnode then
+			table.insert(newmap,{map[i],0})
+		else
+			table.insert(newmap,{map[i],99999})
+		end
+	end
+	return(newmap)
+end
+module.checkunvisited= function(currentnode,unvisited,newmap,lastdist)
+	local existingmap= currentnode:FindFirstChild('Nodemap')
+	if existingmap~=nil then
+		local nodeinfos= existingmap:GetChildren()
+		for i=1, #nodeinfos do
+			if nodeinfos[i].Nodeobj.Value==newmap[i][1] then
+				newmap[i][2]= nodeinfos[i].Nodedist.Value
+			end
+		end
+	else
+		local connectingnodes= currentnode:GetChildren()
+		for i=1, #connectingnodes do
+			if connectingnodes[i].ClassName=='ObjectValue' then
+				if connectingnodes[i].Value~=nil then
+					local index=0
+					local j=1
+					
+					while newmap[j]~=nil and newmap[j][1]~=connectingnodes[i].Value do
+						j=j+1
+					end
+					local newdist= (currentnode.Position- connectingnodes[i].Value.Position).Magnitude +lastdist
+					if newdist<newmap[j][2] then
+						newmap[j][2]=newdist
+						newmap= module.checkunvisited(connectingnodes[i].Value,unvisited,newmap,newdist)
+					end
+				end
+			end
+		end
+	end
+	return(newmap)
+end
+module.constructpath= function(path,currentnode,newmap,lastmax)--trace back from last to find critical path (shortest)
+	local connectingnodes= currentnode:GetChildren()
+	local shortestdist=lastmax
+	local shortestnode= nil
+	for i=1, #connectingnodes do
+		if connectingnodes[i].ClassName=='ObjectValue' then
+			local j=1
+			while newmap[j][1]~=connectingnodes[i].Value do
+				j=j+1
+			end
+			if newmap[j][2]<shortestdist then
+				shortestdist= newmap[j][2]-0.1
+				shortestnode=newmap[j][1]
+			end
+		end
+	end
+	if shortestnode~=nil then
+		table.insert(path,shortestnode.CFrame)
+		path= module.constructpath(path,shortestnode,newmap,shortestdist)
+	end
+	return(path)
+end
+module.markpos= function(pos)
+	local new= Instance.new('Part')
+	new.Parent= workspace.clashcombat.Projectiles
+	new.CanCollide=false
+	new.CanQuery=false
+	new.Material= Enum.Material.Neon
+	new.Shape= Enum.PartType.Ball
+	new.Anchored=true
+	new.Size= Vector3.new(2,2,2)
+	new.Position= pos
+	--new:Destroy()
+end
+module.inverselist= function(list)
+	local newlist={}
+	for i=#list, 1, -1 do
+		table.insert(newlist,list[i])
+		--module.markpos(list[i].Position)
+	end
+	return(newlist)
+end
+module.Astarpathfinding= function(start,finish,astar)
+	if astar==nil then
+		astar= script.Astarmap
+	end
+	local mapnodes= script.Astarmap:GetChildren()
+	local startnode, endnode= module.checknodes(mapnodes,start,finish,100,100)
+	if startnode~=nil and endnode~=nil then
+		if startnode==endnode then
+			return({CFrame.new(start),startnode.CFrame,CFrame.new(finish)})
+		else
+			local newmap= module.generatemap(startnode,mapnodes)
+			local unvisited= {}
+			newmap= module.checkunvisited(startnode,unvisited,newmap,0) --get tantative distances
+			local i=1
+			while endnode~=newmap[i][1] do --back track from finish to start to get smallest path
+				i=i+1
+			end
+			local rpath= module.constructpath({endnode.CFrame},endnode,newmap,99999)
+			local path= module.inverselist(rpath)
+			table.insert(path,CFrame.new(finish))
+			return(path)
+		end
+	else
+		return(nil)
+	end
+end
+
+-- Example usage:
+
+return(module)
