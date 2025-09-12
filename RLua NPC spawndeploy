@@ -1,0 +1,398 @@
+local module = {}
+module.sortgear= function(troop,gearlist)
+	if type(troop)=='table' then
+		for i=1, #troop do
+			module.sortgear(troop[i],gearlist)
+		end
+		return
+	end
+	if #gearlist>0 then
+		local gear= module.sortsinglegear(gearlist[1])
+		gear.Parent=troop
+		if #gearlist>1 then
+			for i=2, #gearlist do
+				local gear= module.sortsinglegear(gearlist[i])
+				gear.Parent=troop.backpack
+				module.clipgear(troop,gear)
+			end
+		end
+	end
+end
+module.sortsinglegear= function(gear) --ik this is bad code but idc
+	local t= game.ServerStorage.clashserv.Tools
+	local new=nil
+	if gear=='random' then
+		local wlist= game.ServerStorage.clashserv.Tools:GetChildren()
+		local tool= wlist[math.random(1,#wlist)]
+		new= tool:Clone()
+	elseif gear=='lowrandom' then
+		local lowlist= {t.MP5,t.AK47,t:FindFirstChild('Remington 870')}
+		local tool= lowlist[math.random(1,#lowlist)]
+		new= tool:Clone()
+	elseif gear=='midrandom' then
+		local midlist= {t.M16,t.Famas,t:FindFirstChild('Remington 870'),t.M24,t.M249}
+		local tool= midlist[math.random(1,#midlist)]
+		new= tool:Clone()
+	elseif gear=='highrandom' then
+		local highlist= {t:FindFirstChild('Gatling gun'),t:FindFirstChild('Grenade Launcher'),t:FindFirstChild('RPG'),t.Flamethrower}
+		local tool= highlist[math.random(1,#highlist)]
+		new= tool:Clone()
+	elseif gear=='assist' then
+		local assistlist= {t:FindFirstChild('Frag grenade'),t.Molotov}
+	else
+		local tool= game.ServerStorage.clashserv.Tools:FindFirstChild(gear)
+		if tool~=nil then
+			new= tool:Clone()
+		end
+	end
+	return(new)
+end
+module.clipgear= function(npc,tool)
+	local attachments= {'WaistLeftAttachment','WaistBackAttachment','WaistRightAttachment'}
+	local torso= npc:FindFirstChild('LowerTorso')
+	if torso==nil then
+		torso= npc:FindFirstChild('HumanoidRootPart')
+	end
+	local clip= torso:FindFirstChild('WaistRightAttachment')
+	if clip==nil then
+		clip= torso:FindFirstChildOfClass('Attachment')
+		if clip==nil then
+			clip= Instance.new('Attachment')
+			clip.Parent= torso
+		end
+	end
+	local handle= tool:FindFirstChild('Handle')
+	local attachment=nil
+	if handle~=nil then
+		attachment= handle:FindFirstChildOfClass('Attachment')
+		if attachment==nil then
+			attachment= Instance.new('Attachment')
+			attachment.Parent= handle
+		end
+		handle.CanTouch=false
+	end
+	local rope= Instance.new('BallSocketConstraint')
+	rope.Parent= tool
+	rope.Name='Clashtoolrope'
+	--rope.Length=0.5
+	rope.Attachment0= clip
+	rope.Attachment1= attachment
+end
+module.getdeploycframe= function(cframe)
+	--if position=='raid' then
+	--	if math.random(1,5)==1 then
+	--		position= Vector3.new(math.random(-100,100),400,math.random(-100,100))
+	--	else
+	--		position= Vector3.new(math.random(-80,80),2,240)
+	--	end
+	--end
+	return(cframe)
+end
+module.givepacknpc= function(npc,pack)
+	if type(npc)=='table' then
+		for i=1, #npc do
+			module.givepacknpc(npc[i],pack)
+		end
+		return
+	end
+	local components= pack:GetChildren()
+	local presetanimcheck= npc:FindFirstChild('cAnimate')
+	for i=1, #components do
+		local new= components[i]:Clone()
+		new.Parent= npc
+		if new.ClassName=='Script' then
+			if presetanimcheck==nil or new.Name~='Animationksf2' then
+				new.Disabled=false
+			end
+		end
+	end
+end
+module.deploy= function(npc,cframe)
+	if cframe~=false then
+		npc:SetPrimaryPartCFrame(cframe)
+	end
+	module.givepacknpc(npc,workspace.clashcombat.Modules.NPC)
+	if npc.Config.Wanderlocations.Value~=nil or npc.Config.Wander.Value==true or npc.Config.Chase.Value>0 then
+		module.givepacknpc(npc,workspace.clashcombat.Modules.Mobilescripts)
+	else
+		module.givepacknpc(npc,workspace.clashcombat.Modules.Sentryscripts)
+	end
+end
+module.returnrandom= function(min,max)
+	local random= randomiser+math.random(min,max)
+	if random>max then
+		random= random-max
+		if random>max then
+			random= random-randomiser+max
+		end
+		randomiser=-1
+	elseif random<min then
+		random= min
+	end
+	randomiser= randomiser+1
+	return(random)
+end
+module.giveaccessory= function(npc)
+	if script.Front.Value==true then
+		local accessories= game.ServerStorage.clashserv.models.Front:GetChildren()
+		local random= module.returnrandom(1,#accessories)
+		local pickedaccessory= accessories[random]:Clone()
+		pickedaccessory.Parent= npc
+	end
+	if script.Hats.Value==true then
+		local accessories= game.ServerStorage.clashserv.models.Hats:GetChildren()
+		local random= module.returnrandom(1,#accessories)
+		local pickedaccessory= accessories[random]:Clone()
+		pickedaccessory.Parent= npc
+	end
+	if script.Hairs.Value==true then
+		local hairs= game.ServerStorage.clashserv.models.Hairs:GetChildren()
+		local random= module.returnrandom(1,#hairs)
+		local pickedhair= hairs[random]:Clone()
+		pickedhair.Parent= npc
+	end
+end
+module.spawntroops= function(troopname,cframe,name,count,gearlist,config,car,dest)
+	local players= game.Players:GetChildren()
+	local templatetroop= game.ServerStorage.clashserv.NPCs:FindFirstChild(troopname)
+	local spawnednpcs={}
+	local newc=nil
+	local seats=nil
+	if car~=nil then
+		newc= module.deploycar(car,cframe)
+		seats= newc.Seats:GetChildren()
+	end
+	for i=1, count do
+		local new= templatetroop:Clone()
+		new.Parent= workspace
+		--local cframe= module.getdeploycframe(position)
+		new.Name= name
+		if config~=nil then
+			local new2= config:Clone()
+			new2.Parent= new
+			new2.Name= 'Config'
+		end
+		module.sortgear(new,gearlist)
+		if script.Accessories.Value==true then
+			module.giveaccessory(new)
+		end
+		table.insert(spawnednpcs,new)
+		if car~=nil then
+			if i==1 then
+				seats= module.seatnpc(new,newc,1,true,seats)
+			else
+				seats= module.seatnpc(new,newc,0,true,seats)
+			end
+		else
+			module.deploy(new,cframe)
+		end
+	end
+	--if car~=nil then
+	--	local new= module.deploycar(car,cframe)
+	--	module.seatnpc(spawnednpcs[1],new,1)
+	--	for i=2, #spawnednpcs do
+	--		module.seatnpc(spawnednpcs[i],new,0)
+	--	end
+	--end
+	return spawnednpcs
+end
+module.createroutine= function(NPC,name,weight,location,track,priority,timeout,maxdist,tries,destroy)
+	local routinecheck= NPC.routines:FindFirstChild(name)
+	if routinecheck==nil then
+		local routinetemp= NPC.routine
+		local new= routinetemp:Clone()
+		new.Parent= NPC.routines
+		new.Place.Value= location
+		new.Weight.Value=weight
+		new.Track.Value=track
+		new.Priority.Value=priority
+		new.Timeout.Value=timeout
+		new.Maxdistance.Value=maxdist
+		new.Tries.Value=tries
+		new.Name=name
+		routinecheck=new
+	elseif destroy==true then
+		routinecheck:Destroy()
+	else
+		routinecheck.Place.Value= location
+		routinecheck.Weight.Value=weight
+		routinecheck.Track.Value=track
+	end
+	return(routinecheck)
+end
+module.randomhostage= function()
+	local hostages={}
+	local npcs= workspace:GetChildren()
+	for i=1, #npcs do
+		if npcs[i].Name=='Hostage' then
+			table.insert(hostages,npcs[i])
+		end
+	end
+	local hostage= hostages[math.random(1,#hostages)]
+	local prime= hostage.PrimaryPart
+	local part= hostage:FindFirstChildOfClass('Part')
+	if prime~=nil then
+		return(prime.Position)
+	elseif part~=nil then
+		return(part.Position)
+	else
+		return(Vector3.new(0,0,0))
+	end
+end
+module.randomplayer = function()
+	local players= game.Players:GetChildren()
+	local random= module.returnrandom(1,#players)
+	local player= players[random]
+	local prime= player.Character.PrimaryPart
+	local part= player.Character:FindFirstChildOfClass('Part')
+	if prime~=nil then
+		return(prime.Position)
+	elseif part~=nil then
+		return(part.Position)
+	else
+		return(Vector3.new(0,0,0))
+	end
+end
+module.givehuntroutine= function(npc,target,timeout)
+	local routinetemp= npc.routine
+	local new= routinetemp:Clone()
+	new.Parent= npc.routines
+	new.Weight.Value=2
+	new.Name='Hunt'
+	new.Priority.Value=true
+	if timeout~=nil then
+		new.Timeout.Value=true
+		new.Tries.Value=5
+	end
+	local pos=nil
+	if target=='player' then
+		pos= module.randomplayer()
+	elseif target=='hostage' then
+		pos= module.randomhostage()
+	elseif target.ClassName=='Model' then
+		pos= target.PrimaryPart.Position
+	else
+		pos=target.PrimaryPart.Position
+	end
+	new.Place.Value= pos
+end
+module.npcfollow= function(npc,target,timeout)
+	local prime= target.PrimaryPart
+	local routine= module.createroutine(npc,'follow',2,prime.Position,prime,true,false,0,10,true)
+	if timeout~=nil then
+		routine.Timeout.Value=true
+		routine.Tries.Value=5
+	end
+end
+module.seatnpc= function(npc,car,seattype,deploying,seats)
+	if seattype==1 then
+		local seat= car.Build:FindFirstChildOfClass('VehicleSeat')
+		if seat~=nil then
+			if deploying==true then
+				module.deploy(npc,seat.CFrame)
+			end
+			seat:Sit(npc.Humanoid)
+		end
+	else
+		if seats==nil then
+			seats= car.Seats:GetChildren()
+		end
+		for i=1, #seats do
+			if seats[i]~=nil then
+				if seats[i].Occupant==nil then
+					if deploying==true then
+						module.deploy(npc,seats[i].CFrame)
+					end
+					seats[i]:Sit(npc.Humanoid)
+					table.remove(seats,i)
+					return(seats)
+				end
+			end
+		end
+	end
+end
+module.deploycar= function(car,cframe,destination)
+	local templatecar=nil
+	if car=='random' then
+		local tcars=game.ServerStorage.clashserv.Vehicles:GetChildren()
+		templatecar= tcars[math.random(1,#tcars)]
+	else
+		templatecar= game.ServerStorage.clashserv.Vehicles:FindFirstChild(car)
+	end
+	local new= templatecar:Clone()
+	new.Parent= workspace
+	new:SetPrimaryPartCFrame(cframe)
+	if destination~=nil then
+		new.Config.Setlocation.Value=destination
+	end
+	local new2= workspace.clashcombat.Modules.Vehicle.Car:Clone()
+	new2.Parent= new
+	new2.Disabled=false
+	return(new)
+end
+module.putincar= function(trooplist,car,driver)
+	local count=1
+	if driver~=nil then
+		driver.Config.Canjump.Value=false
+		module.seatnpc(driver,car,1,nil,nil)
+	else
+		trooplist[1].Config.Canjump.Value=false
+		module.seatnpc(trooplist[1],car,1,nil,nil)
+		count=2
+	end
+	if #trooplist>=count then
+		for i=count, #trooplist do
+			trooplist[i].Config.Canjump.Value=false
+			module.seatnpc(trooplist[i],car,0,nil,nil)
+		end
+	end
+end
+module.returnplayercframe= function()
+	local players= game.Players:GetChildren()
+	local player= players[math.random(1,#players)]
+	local prime= player.Character.PrimaryPart
+	return(prime.CFrame)
+end
+module.deployturret= function(turretname,cframe)
+	local templateturret=nil
+	templateturret= game.ServerStorage.clashserv.NPCs:FindFirstChild(turretname)
+	local new= templateturret:Clone()
+	new.Parent= workspace
+	new:SetPrimaryPartCFrame(cframe)
+	new.Loadturret.Enabled=true
+	return(new)
+end
+module.changeteams= function(npclist,team)
+	for i=1, #npclist do
+		npclist[i].Team.Value= team
+	end
+end
+module.addobject= function(npc,obj,custname)
+	if type(npc)=='table' then
+		for i=1, #npc do
+			module.addobject(npc[i],obj,custname)
+		end
+		return
+	end
+	local new= obj:Clone()
+	new.Parent=npc
+	if custname~=nil then
+		new.Name=custname
+	end
+end
+module.simplenpc= function(troopname,cframe,count)
+	local templatetroop= game.ServerStorage.clashserv.NPCs:FindFirstChild(troopname)
+	local spawnednpcs={}
+	for i=1, count do
+		local new= templatetroop:Clone()
+		new.Parent=workspace
+		if cframe~=false then
+			new:SetPrimaryPartCFrame(cframe)
+		end
+		module.givepacknpc(new,workspace.clashcombat.Modules.Simplenpc)
+		table.insert(spawnednpcs,new)
+	end
+	return spawnednpcs
+end
+randomiser=0
+return module
