@@ -1,0 +1,104 @@
+function musicvaluechanged()
+	if current.Value~=oldmusic then
+		changemusic(current.Value)
+	end
+end
+function accompvaluechanged()
+	if accomp.Value~=oldaccomp then
+		changeaccomp(accomp.Value)
+	end
+end
+function changemusic(music,accomp)
+	if oldmusic~=music then
+		current.Value=music
+		--oldmusic.Playing=false
+		oldmusic:Stop()
+		music.Playing=true
+		--music.TimePosition=0
+		script.Parent.Updateclient:FireAllClients(music,oldmusic)
+		oldmusic=music
+		local nextacc=current.Value:FindFirstChild('Accomp')
+		if nextacc~=nil then
+			changeaccomp(nextacc.Value)
+		elseif accomp~=nil then
+			if accomp~=oldaccomp then
+				changeaccomp(accomp)
+			end
+			script.Parent.AccompanyEnabled.Value=true
+		else
+			script.Parent.AccompanyEnabled.Value=false
+		end
+	else
+		current.Value.TimePosition=0
+		current.Value.Playing=true
+	end
+end
+function changeaccomp(music)
+	if oldaccomp~=music then
+		accomp.Value=music
+		--oldaccomp.Playing=false
+		oldaccomp:Stop()
+		--music.TimePosition=0
+		music.Playing=true
+		script.Parent.Updateclient:FireAllClients(music,oldaccomp)
+		oldaccomp= music
+	end
+end
+function loopmusic()
+	local nextacc=current.Value:FindFirstChild('Accomp')
+	if nextacc~=nil then
+		changeaccomp(nextacc.Value)
+	end
+end
+function nextmusic()
+	local nextm= current.Value:FindFirstChild('Next')
+	if nextm~=nil then
+		changemusic(nextm.Value)
+	end
+	local nextacc=current.Value:FindFirstChild('Accomp')
+	if nextacc~=nil then
+		changeaccomp(nextacc.Value)
+	end
+end
+function nextaccomp()
+	local nextacc= accomp.Value:FindFirstChild('Next')
+	if nextacc~=nil then
+		changeaccomp(nextacc.Value)
+	else
+		changeaccomp(accomp.Value)
+	end
+end
+function updatenewplayer(player)
+	local plrs= game.Players:GetChildren()
+	if #plrs>1 then
+		script.Parent.Updateclient:FireClient(player,current.Value,oldmusic,current.Value.TimePosition)
+		script.Parent.Updateclient:FireClient(player,current.Value,oldaccomp,current.Value.TimePosition)
+	end
+end
+current=script.Parent.Currentmusic
+accomp= script.Parent.Accompanymusic
+oldmusic=current.Value
+oldaccomp= accomp.Value
+--current.Value.Ended:Connect(nextmusic)
+current.Value.DidLoop:Connect(loopmusic)
+--current.Value.Changed:Connect(nextmusic)
+--accomp.Value.Changed:Connect(nextaccomp)
+current.Changed:Connect(musicvaluechanged)
+accomp.Changed:Connect(accompvaluechanged)
+
+--accomp.Value.Ended:Connect(nextaccomp)
+--accomp.Value.DidLoop:Connect(nextaccomp)
+game.Players.PlayerAdded:Connect(updatenewplayer)
+script.Parent.changemusic.Event:Connect(changemusic)
+current.Value.Playing=true
+accomp.Value.Playing=true
+accomp.Value.Volume=0
+while true do
+	wait(1)
+	if current.Value.IsPlaying==false or current.Value.TimePosition>(current.Value.TimeLength-1) then
+		nextmusic()
+	end
+	if accomp.Value.IsPlaying==false or accomp.Value.TimePosition>(accomp.Value.TimeLength-1) then
+		nextaccomp()
+	end
+end
