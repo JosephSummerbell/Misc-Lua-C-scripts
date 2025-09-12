@@ -1,0 +1,974 @@
+local module = {}
+--module.reverselist= function(list)--AI DID WRONG FUNCTIIN
+--	local reversed = {}
+--	for i = #list, 1, -1 do
+--		reversed[#reversed + 1] = list[i]
+--		print(reversed[#reversed + 1])
+--	end
+	
+--	return reversed
+--end
+module.mutatedisease= function(dscript,vuln)
+	local difficulty= workspace.mains.Values.Difficulty.Value
+	local factora= (math.random(-2,(5+difficulty))/5)+1
+	local factorb= (math.random(-2,(3+difficulty))/5)+1
+	dscript.Stats.Spread.Value= dscript.Stats.Spread.Value*factorb
+	dscript.Stats.Deathrate.Value= dscript.Stats.Deathrate.Value*factora
+	dscript.Stats.Severerate.Value= dscript.Stats.Severerate.Value*factora
+	dscript.Stats.Longeffectrate.Value= dscript.Stats.Longeffectrate.Value*factora
+	workspace.mains.Values.Variants.Value= workspace.mains.Values.Variants.Value+1
+	local currentsymptoms= dscript.Currentsymptoms:GetChildren()
+	if #currentsymptoms>0 then
+		local randomsymptom= currentsymptoms[math.random(1,#currentsymptoms)]
+		local correspondingsymptom= dscript.Symptomchance:FindFirstChild(randomsymptom.Name)
+		if correspondingsymptom~=nil then
+			correspondingsymptom.Value=correspondingsymptom.Value+(5*difficulty)
+		end
+		if difficulty>1 then
+			if (difficulty>2 and vuln<=30) or (vuln<=2 and math.random(1,3)==1) then
+				local twitches=dscript.Symptomchance:FindFirstChild('Twitches')
+				if twitches~=nil then
+					twitches.Value=100
+					twitches.Zombie.Value=100
+				end
+			end
+		end
+	end
+end
+module.reverselist= function(list)
+	local reversed= {}
+	for i=#list, 1, -1 do
+		table.insert(reversed,list[i])
+	end
+	return(reversed)
+end
+module.calculateseverityfactor= function(humanoid,infprogress,infrange)-- 1 is severe
+	local healthperc= (humanoid.MaxHealth-humanoid.Health)/humanoid.MaxHealth
+	local infperc= (infrange-math.abs(infprogress))/infrange
+	local sevperc= (infperc+healthperc)/2  --from 0-1 how severe is this rn
+	local healthsev= math.round((infperc+healthperc)*1.7)+1 -- divide by 2 cause 2 percs then multiply by worst severity (3)
+	return healthsev, sevperc
+end
+module.selectsymptomsev= function(symptom,severity,humanoid,infprogress,infrange)
+	local chosensymptom=nil
+	local coresymptom=nil
+	local reversesymptlist= {symptom}
+	local parsymptom= symptom.Parent
+	while parsymptom.Name~='Symptomchance' do
+		table.insert(reversesymptlist,parsymptom)
+		parsymptom= parsymptom.Parent
+--		print(parsymptom.Name)
+		wait(0.1)
+	end
+	local symptlist= module.reverselist(reversesymptlist)
+--	print(#reversesymptlist)
+	local healthsev, sevperc= module.calculateseverityfactor(humanoid,infprogress,infrange)
+	if #symptlist<healthsev then
+		healthsev= #symptlist
+	end
+	if healthsev>(4-severity) then
+		healthsev= (4-severity)
+	end
+	chosensymptom= symptlist[healthsev]
+	coresymptom= symptlist[1]
+	--print(healthsev)
+	return chosensymptom, coresymptom, sevperc
+end
+
+module.dosymptom= function(symptom,severity,medicine,humanoid,player,dtype,origscript,infprogress,infrange)
+	local worsecheck= symptom:FindFirstChildOfClass('StringValue')
+	local chosensymptom, coresymptom, servperc= module.selectsymptomsev(symptom,severity,humanoid,infprogress,infrange)
+	local breath=false
+	if module.medicinecheck(coresymptom,medicine,humanoid)==false then
+		--print(chosensymptom.Name)
+		if chosensymptom.Name=='Cough' then
+			module.cough(humanoid,0,origscript)
+		elseif chosensymptom.Name=='Fever' then --add headache effect but lower
+			module.fever(humanoid,player,0)
+		elseif chosensymptom.Name=='Sneeze' then
+			module.sneeze(humanoid,0,origscript)
+		elseif chosensymptom.Name=='Vomit' then
+			module.vomit(humanoid,0,dtype)
+		elseif chosensymptom.Name=='Cysts' and severity<3 then --normal but improve the cysts 
+			breath= module.rash(humanoid,0,servperc)
+		elseif chosensymptom.Name=='Shivers' then --cold effect shiver anim
+			module.shivers(humanoid,player)
+		elseif chosensymptom.Name=='Convulsions' then --redish tint effects
+			module.convulsions(humanoid,player)
+		elseif chosensymptom.Name=='Stomach pain' then --stomach holding anims, slows down npc heavily temporarily, green tint effect
+			module.stompain(humanoid,player)
+		elseif chosensymptom.Name=='Diarrhea' then 
+			module.diarrhea(humanoid,origscript,player,servperc)
+		elseif chosensymptom.Name=='Pulmonary Fibrosis' then --coughing blood (veins ui effect)
+			module.cough(humanoid,1,origscript)
+		elseif chosensymptom.Name=='hemorrhagic fever' then --headache ui/ 3d hallucinations (horror)
+			module.fever(humanoid,player,1)
+		elseif chosensymptom.Name=='Lesions' then --avatar has texture on
+			breath= module.rash(humanoid,1,servperc)
+		elseif chosensymptom.Name=='Pneumonia' then 
+			module.sneeze(humanoid,1,origscript)
+		elseif chosensymptom.Name=='Severe vomiting' then --heavier vomiting anims, heavy vomit , parasites?
+			module.vomit(humanoid,1,dtype,servperc)
+		elseif chosensymptom.Name=='Twitches' then --twitches like prid sanit, red tint effects, 3d halluc effect, murder halluc
+			module.twitch(humanoid)
+		elseif chosensymptom.Name=='Zombie' then
+			module.supernatural(humanoid,origscript,dtype)
+		elseif chosensymptom.Name=='Gangrene' then --lose limbs
+			module.gangrene(humanoid)
+		elseif chosensymptom.Name=='Blindness' then
+			module.blindness(humanoid,player)
+		elseif chosensymptom.Name=='Sweating' then
+			module.sweats(humanoid,player)
+		elseif chosensymptom.Name=='Nausea' then
+			module.nausea(humanoid,player,0)
+		elseif chosensymptom.Name=='Diplopia' then
+			module.nausea(humanoid,player,1)
+		elseif chosensymptom.Name=='CutaneousMycosis' then
+			module.growth(humanoid,player,origscript)
+		elseif chosensymptom.Name=='Iceillusions' then
+			module.iceillusions(humanoid,player,origscript)
+		elseif chosensymptom.Name=='Theultimatesymptom' then
+			breath= module.ultimatesymptom(humanoid,player,origscript,servperc)
+		elseif chosensymptom.Name=='Freeze' then
+			module.freeze(humanoid,1,origscript)
+		end
+		
+	end
+	return(breath)
+end
+module.specialitycheck= function(humanoid,team,dtype)-- SECOND CHECK (when speciality hits)
+	local teamcheck=false
+	local healththresh= 20
+	if team~=nil then
+		teamcheck= team.Value==BrickColor.new('New Yeller')
+	end
+	if dtype=='Virus' then
+		healththresh=45
+		teamcheck=true
+	elseif dtype=='Parasitic' then
+		healththresh=35
+	end
+	if teamcheck==true and humanoid.Health<healththresh then
+		return true
+	else
+		return false
+	end
+end
+module.ultimatesymptom= function(humanoid,player,origscript,servperc)
+	module.cough(humanoid,1,origscript)
+	module.fever(humanoid,player,1)
+	module.sneeze(humanoid,1,origscript)
+	module.vomit(humanoid,1,'Parasitic')
+	local breath= module.rash(humanoid,1,servperc)
+	module.shivers(humanoid,player)
+	module.convulsions(humanoid,player)
+	module.stompain(humanoid,player)
+	module.diarrhea(humanoid,origscript,player,servperc)
+	module.twitch(humanoid)
+	module.gangrene(humanoid)
+	module.blindness(humanoid,player)
+	module.sweats(humanoid,player)
+	module.nausea(humanoid,player,1)
+end
+module.zombiespeciality= function(humanoid,dtype)-- ZOMB(FIRST) CHECK  (when turn into zombie)
+	local healththresh=85
+	if dtype=='Virus' then
+		healththresh=70
+	end
+	if humanoid.Health<healththresh then
+		return true
+	else
+		return false
+	end
+end
+module.supernatural= function(humanoid,origscript,dtype)
+	local supernaturalcheck= module.zombiespeciality(humanoid,dtype)
+	if supernaturalcheck==true then
+		local team= humanoid.Parent:FindFirstChild('Team')
+		local check= module.specialitycheck(humanoid,team,dtype)
+		if check==true then
+			if dtype=='Virus' then
+				module.freeze(humanoid,0,origscript)
+			elseif dtype=='Bacteria' then
+				module.rash(humanoid,2,0.5)
+			else
+				module.wormexposure(humanoid)
+			end
+		else
+			local vulnerability= humanoid.Parent:FindFirstChild('Vulnerability')
+			if vulnerability~=nil then
+				vulnerability= vulnerability.Value
+			else--shouldnt call
+				vulnerability=math.random(1,18)
+			end
+			module.zombie(humanoid,vulnerability,origscript)
+		end
+	end
+end
+
+module.freeze= function(humanoid,mod,origscript)
+	--humanoid:TakeDamage(10)
+	--humanoid.Health=0
+	if humanoid.Health<=25 then
+		local template= game.ServerStorage.Diseasepack.models.Blister
+		local sdecal= template.SC
+		local randlocation= module.getrandbodypart(humanoid)
+		local sccheck= randlocation:FindFirstChild('SC')
+		if sccheck==nil then
+			module.coverpart(randlocation,sdecal)
+		end
+		
+		module.changecolors(humanoid,Color3.fromRGB(0,0,150))
+		local new= module.partanimsound(humanoid,'Freeze')
+		new.Dots:Emit(8)
+		new.Mist:Emit(50)
+		new.Shatter:Emit(250)
+		new.spread.Enabled=true
+		if mod==1 and humanoid.Health<20 and humanoid.Health>0 and humanoid.Parent.PrimaryPart:FindFirstChild('frozenscript')==nil then
+			local config= humanoid.Parent:FindFirstChild('Config')
+			if config==nil then
+				local oldhumanoid= humanoid
+				humanoid= module.convertplayertonpc(humanoid)
+				oldhumanoid.Health=0
+			else
+				module.removenpcoldscripts(humanoid.Parent)
+			end
+			humanoid.DSSDisease.Enabled=false
+			humanoid.Health= humanoid.MaxHealth
+			humanoid.WalkSpeed= humanoid.WalkSpeed+4
+			local new= game.ServerStorage.Diseasepack.Scripts:FindFirstChild('frozenscript'):Clone()
+			new.Parent= humanoid.Parent.PrimaryPart
+			new.Enabled=true
+		else
+			local parts= humanoid.Parent:GetChildren()
+			for i=1, #parts do
+				if parts[i]:IsA('BasePart') then
+					parts[i].Anchored=true
+					parts[i].Material= Enum.Material.Ice
+				end
+			end
+			--humanoid.Health=0
+			humanoid:TakeDamage(5)
+		end
+	else
+		humanoid.WalkSpeed= (humanoid.Health-30)*0.4
+		if math.random(1,2)==1 then
+			module.shivers(humanoid,nil)
+		end
+	end
+end
+module.medicinecheck= function(coresymptom,medicine,humanoid)
+	if medicine:FindFirstChild(coresymptom.Name)==nil then
+		return(false)
+	elseif coresymptom.Name=='Fever' then
+		humanoid.WalkSpeed= ((script.Parent.Health/script.Parent.MaxHealth)*6)+10
+		return(true)
+	end
+end
+module.partanimsound= function(humanoid,name)
+	local template, sound= module.animsound(humanoid,name)
+	local new= module.physicalpart(template,humanoid,sound)
+	return(new)
+end
+module.animsound= function(humanoid,name)
+	local template= game.ServerStorage.Diseasepack.models:FindFirstChild(name)
+	local sounds= template.Sounds:GetChildren()
+	local anims= template.Anims:GetChildren()
+	local sound= sounds[math.random(1,#sounds)]
+	local anim= anims[math.random(1,#anims)]
+	local track= humanoid:LoadAnimation(anim)
+	track:Play()
+	return template, sound
+end
+module.sound= function(humanoid,name)
+	local template= game.ServerStorage.Diseasepack.models:FindFirstChild(name)
+	local sounds= template.Sounds:GetChildren()
+	local sound= sounds[math.random(1,#sounds)]
+	return template, sound
+end
+module.physicalpart= function(template,humanoid,sound)
+	local new= template:Clone()
+	new.Parent= workspace.Environment
+	new.Position= humanoid.Parent.Head.Position
+	new.Sound.SoundId= sound.SoundId
+	new.Sound:Play()
+	return(new)
+end
+module.maskcheck= function(humanoid)
+	if humanoid.Parent:FindFirstChild('Mask')==nil then
+		return(false)
+	else
+		return(true)
+	end
+end
+module.covercheck= function(humanoid)
+	if humanoid.SeatPart~=nil then
+		if humanoid.SeatPart.Parent~=nil then
+			if humanoid.SeatPart.Parent.Name=='stretcher' then
+				if humanoid.SeatPart.Parent.covering.Transparency~=1 then
+					return(true)
+				end
+			end
+		end
+	end
+	return(false)
+end
+module.doeffect= function(new,num,dur,humanoid)
+	local eff= new:FindFirstChild('Effect')
+	eff.Parent= humanoid.Parent.Head
+	if dur~=nil then
+		eff.Enabled=true
+		wait(dur)
+	else
+		eff:Emit(10)
+	end
+	eff:Destroy()
+end
+module.cough= function(humanoid,mod,origscript)
+	local pname='Cough'
+	if mod==1 then
+		pname='PulmFibro'
+	end
+	local new= module.partanimsound(humanoid,pname)
+	if module.maskcheck(humanoid)==false and module.covercheck(humanoid)==false then
+		new.spread.Disabled=false
+		local new2= origscript:Clone()
+		new2.Parent=new
+		module.doeffect(new,10,nil,humanoid)
+		new2.Disabled=true	
+	else
+		new:Destroy()
+	end
+end
+module.sneeze= function(humanoid,mod,origscript)
+	local pname='Sneeze'
+	if mod==1 then
+		pname='Pneumonia'
+	end
+	local new= module.partanimsound(humanoid,pname)
+	if module.maskcheck(humanoid)==false and module.covercheck(humanoid)==false then
+		new.spread.Disabled=false
+		local sneeze= new.Sneeze
+		sneeze.Parent= humanoid.Parent.Head
+		sneeze.Enabled=true
+		local new2= origscript:Clone()
+		new2.Parent=new
+		new2.Disabled=true
+		wait(0.5)
+		sneeze:Destroy()
+	else
+		new:Destroy()
+	end
+end
+module.fever= function(humanoid,player,mod)
+	humanoid.WalkSpeed= ((humanoid.Health/humanoid.MaxHealth)*10)+4
+	if player~=nil then
+		if mod==0 then
+			game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,1)
+		else
+			game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,2)
+			local speed= humanoid.WalkSpeed
+			humanoid.WalkSpeed=speed-6
+			wait(0.75)
+			humanoid.WalkSpeed=speed
+		end
+	end
+end
+module.stompain= function(humanoid,player)
+	local new= module.partanimsound(humanoid,'Stomache')
+	local speed= humanoid.WalkSpeed
+	humanoid.WalkSpeed=speed-6
+	if player~=nil then
+		game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0,0.3,0),0.7,2)
+		game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0,0.3,0),0.3,0.5)
+	end
+	wait(0.5)
+	humanoid.WalkSpeed=speed-12
+	wait(1.5)
+	humanoid.WalkSpeed=speed
+	new:Destroy()
+end
+module.nausea = function(humanoid,player,mod)
+	local new= module.partanimsound(humanoid,'Stomache')
+	local speed= humanoid.WalkSpeed
+	local scale= (math.floor((110-humanoid.Health)/3))
+	if scale<1 then
+		scale=1
+	end
+	local change= math.random(-scale,scale)/10
+	local change2= math.random(-scale,scale)/40
+	local change3= math.random(-scale,scale)/40
+	if player~=nil then
+		if humanoid.Health<42 then
+			game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,1)
+			if humanoid.Health<26 then
+				game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0.5+(change*0.25),0.5+change2,0.5+change3),0.2,8)
+			end
+		end
+		
+	end
+	if humanoid.Health<80 and player~=nil then
+		if mod==1 then
+			game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,7)
+		end
+		game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,8)
+	end
+	for i=1, 2 do
+		humanoid.WalkSpeed=speed+change
+		wait(0.15)
+		humanoid.WalkSpeed=speed-change
+		wait(0.15)
+	end
+	wait(1.5)
+	humanoid.WalkSpeed=speed
+	new:Destroy()
+end
+
+module.iceillusions = function(humanoid,player,origscript)
+	local new= module.partanimsound(humanoid,'illusion')
+	new.spread.Enabled=true
+	if player~=nil then
+		local length= ((100-humanoid.Health)/5)+1
+		module.blindness(humanoid,player)
+		game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0,0,0.5),0.2,length)
+		game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,9)
+	end
+	if humanoid.Health<9 then
+		module.freeze(humanoid,1,origscript)
+	end
+end
+module.twitch= function(humanoid,player)
+	local new= module.partanimsound(humanoid,'Twitch')
+	if player~=nil then
+		game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0,0,0),0.7,2)
+		game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0,0,0),0.3,1)
+		
+	end
+	wait(4)
+	new:Destroy()
+end
+module.vomit= function(humanoid,mod,dtype,sevperc)
+	local pname='Vomit'
+	local vomcolor=nil
+	if mod==1 then
+		pname='Vomit2'
+		vomcolor= Color3.fromRGB(math.random(60,150),math.random(50,90),35)
+	else
+		vomcolor= Color3.fromRGB(math.random(50,150),math.random(50,150),40)
+	end
+	local new= module.partanimsound(humanoid,pname)
+	local speed= humanoid.WalkSpeed
+	humanoid.WalkSpeed=0
+	new.Parent= workspace.Environment.Vomit
+	new.Color= vomcolor
+	wait(1)
+	local mask= humanoid.Parent:FindFirstChild('Mask')
+	if mask~=nil then
+		mask.Parent= workspace.Environment
+		mask.Handle.CFrame=humanoid.Parent.Head.CFrame
+	end
+	new.Position= humanoid.Parent.Head.Position+Vector3.new(0,-4.3,0)
+	new.Transparency=0
+	new.Head.Value= humanoid.Parent.Head
+	new.spread.Disabled=false
+	new.Orientation= Vector3.new(0,math.random(1,360),0)
+	new.Splat.Color= ColorSequence.new{ColorSequenceKeypoint.new(0,vomcolor),ColorSequenceKeypoint.new(1,vomcolor)}
+	new.Splat:Emit(6)
+	if mod==1 then
+		new.Name='Vomit'
+		if dtype=='Parasitic' then
+			local temp= game.ServerStorage.Diseasepack.models.Worm
+			local wormcount= math.round(sevperc*10)
+			for i=1, wormcount do
+				local new= temp:Clone()
+				new.Parent= workspace.clashcombat.Projectiles
+				new.Rope.Thickness= (math.random(-4,4)/75)+0.1
+				new.Rope.Length= math.random(4,8)/6
+				new.squirm.Enabled=true
+				new:SetPrimaryPartCFrame(humanoid.Parent.Head.CFrame)
+				--new.Rope.Color3= vomcolor  cant set color unless brick?
+			end
+		end
+	end
+	wait(1)
+	humanoid.WalkSpeed=speed
+end
+module.diarrhea= function(humanoid,origscript,player,sevperc)
+	local template, sound= module.animsound(humanoid,'Diarrhea')
+	local speed= humanoid.WalkSpeed
+	humanoid.WalkSpeed=speed-6
+	wait(1)
+	humanoid.WalkSpeed=speed
+	local newa= module.physicalpart(template,humanoid,sound)
+	newa.Transparency=1
+	newa.delete.Disabled=false
+	if player~=nil then
+		game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0.3,0.2,0),0.7,2)
+		game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0.2,0.2,0),0.3,1)
+	end
+	if module.maskcheck(humanoid)==false and module.covercheck(humanoid)==false then
+		local diarcount= 8+ math.round(sevperc*8)
+		for i=1, 13 do
+			local new= template:Clone()
+			new.Parent= workspace.Environment
+			new.Color= Color3.fromRGB(math.random(80,120),math.random(40,80),10)
+			local sizefactor= math.random(10,50)/10
+			new.Size= Vector3.new(sizefactor,sizefactor,sizefactor)
+			local potpart= humanoid.Parent:FindFirstChild('LowerTorso')
+			if potpart~=nil then
+				new.CFrame=potpart.CFrame
+			else
+				new.CFrame= humanoid.Parent.Head.CFrame
+				new.Position= new.Position+Vector3.new(0,-3,0)
+			end
+			local new2= origscript:Clone()
+			new2.Parent=new
+			new2.Disabled=true
+			new.spread.Disabled=false
+			wait(0.06)
+		end
+	end
+end
+module.getrandbodypart= function(humanoid)
+	local btable= {'UpperTorso','LeftUpperArm','RightUpperArm','LeftUpperLeg','RightLowerLeg'}
+	if humanoid.Parent~=nil then
+		local randlocation= humanoid.Parent:FindFirstChild(btable[math.random(1,#btable)])
+		if randlocation~=nil then
+			return(randlocation)
+		else
+			return humanoid.Parent.PrimaryPart
+		end
+	end
+end
+module.getlesserbodypart= function(humanoid)
+	local btable= {'LeftFoot','LeftHand','RightHand','RightFoot','LeftLowerArm','LeftLowerLeg','RightLowerLeg','RightLowerArm'}
+	local randlocation= humanoid.Parent:FindFirstChild(btable[math.random(1,#btable)])
+	if randlocation~=nil then
+		return(randlocation)
+	else
+		return humanoid.Parent.PrimaryPart
+	end
+end
+module.removenecrosis= function(humanoid)
+	local btable= {'UpperTorso','LeftUpperArm','RightUpperArm','LeftUpperLeg','RightLowerLeg'}
+	for i=1, #btable do
+		local part= humanoid.Parent:FindFirstChild(btable[i])
+		if part~=nil then
+			local children= part:GetChildren()
+			for i=1, #children do
+				if children[i].Name=='SC' then
+					children[i]:Destroy()
+				end
+			end
+		end
+	end
+end
+module.changebodypcolor= function(humanoid, lump, bodypart)
+	local colors=humanoid.Parent:FindFirstChild('Body Colors')
+	if bodypart.Name=='UpperTorso' then
+		lump.Color= colors.TorsoColor3
+	elseif bodypart.Name=='LeftUpperArm' then
+		lump.Color= colors.LeftArmColor3
+	else
+		lump.Color= colors.RightArmColor3
+	end
+end
+module.getrandlocationonbody= function(humanoid,set)
+	local randlocation=nil
+	if set~=nil then
+		randlocation= set
+	else
+		randlocation= module.getrandbodypart(humanoid)
+	end
+	local cf= randlocation.CFrame
+	--randlocation.CFrame= randlocation.CFrame+ randlocation.CFrame.LookVector*((math.random(0,1)-0.5)*0.95)
+	--randlocation.CFrame= randlocation.CFrame+ randlocation.CFrame.RightVector*(math.random(-5,5)/10)
+	--randlocation.CFrame= randlocation.CFrame+ randlocation.CFrame.UpVector*(math.random(-8,8)/10)
+	cf= cf+ randlocation.CFrame.LookVector*((math.random(0,1)-0.5)*0.95)
+	cf= cf+ randlocation.CFrame.RightVector*(math.random(-5,5)/10)
+	cf= cf+ randlocation.CFrame.UpVector*(math.random(-8,8)/10)
+	return cf, randlocation
+end
+module.growth = function(humanoid,player,origscript) --springs off main growth for now
+	--local new= module.partanimsound(humanoid,'growth')
+	local growth= humanoid.Parent.PrimaryPart:FindFirstChild('growth')
+	if growth~=nil then
+		local existinggrowths= growth.othergrowths:GetChildren()
+		if #existinggrowths>10 then
+			for i=1, #existinggrowths do
+				existinggrowths[i].Size=existinggrowths[i].Size+ Vector3.new(0.01,0.01,0.01)
+			end
+		else
+			local new= game.ServerStorage.Diseasepack.models.growth:Clone()
+			new.Parent=growth.othergrowths
+			local randlocation, part= module.getrandlocationonbody(humanoid)
+			local position= (randlocation.Position+growth.Position)/2
+			local cframe= CFrame.new(position, randlocation.Position)
+			new.CFrame= cframe
+			local sizemag= (growth.Position- randlocation.Position).Magnitude
+			local width= 0.25/#existinggrowths
+			if width<0.04 then
+				width=0.04
+			end
+			new.Size= Vector3.new(0.2,0.2,(sizemag+0.2))
+			new.Bweld.Part0= growth
+			new.Color= origscript.Specialisedstats.growthcolor.Value
+			new.Spring.Attachment1= growth.Attachment
+			growth.Size= growth.Size+ Vector3.new(0.01,0.01,0.01)
+		end
+	else
+		local new= game.ServerStorage.Diseasepack.models.growth:Clone()
+		new.Parent=humanoid.Parent.PrimaryPart
+		local randlocation, part= module.getrandlocationonbody(humanoid,humanoid.Parent.PrimaryPart)
+		new.CFrame= randlocation
+		new.Bweld.Part0= part
+		new.Color= origscript.Specialisedstats.growthcolor.Value
+	end
+	--new:Destroy()
+end
+module.addcyst= function(template,prime,humanoid)
+	local randlocation= module.getrandbodypart(humanoid)
+	local new= template:Clone()
+	new.Parent= prime
+	new.Position= randlocation.Position
+	new.CFrame= new.CFrame+ randlocation.CFrame.LookVector*((math.random(0,1)-0.5)*0.95)
+	new.CFrame= new.CFrame+ randlocation.CFrame.RightVector*(math.random(-5,5)/10)
+	new.CFrame= new.CFrame+ randlocation.CFrame.UpVector*(math.random(-8,8)/10)
+	--new.Position= randlocation.Position+Vector3.new(math.random(-1,1)/2,math.random(-6,4)/10,math.random(-3,3)/20)
+	new.Bweld.Part0= randlocation
+	module.changebodypcolor(humanoid,new,randlocation)
+	new.Name='Cyst'
+	return(new)
+end
+module.largencyst= function(count,prime,breath,sevperc,humanoid)
+	local cysts= prime:GetChildren()
+	for i=1, count do
+		local cyst= cysts[math.random(1,#cysts)]
+		if cyst.Name=='Cyst' then --cyst.ClassName=='Part'
+			local sf= cyst.Size.X
+			if sf>=0.2 then
+				breath= module.popcyst(cyst,breath,sevperc,humanoid)
+			else
+				cyst.Size= cyst.Size+Vector3.new(0.1,0.1,0.1)
+			end
+		end
+	end
+	return(breath)
+end
+module.wormexposure= function(humanoid)
+	local prime=humanoid.Parent.PrimaryPart
+	local cyst= module.addcyst(game.ServerStorage.Diseasepack.models.Wormhole,prime,humanoid)
+	local worm= cyst.Rope
+	worm.Length= math.random(15,40)/10
+	worm.Thickness= math.random(3,10)/100
+	cyst.Wormend.attach.Enabled=true
+end
+module.popcyst= function(cyst,breath,sevperc,humanoid)
+	if sevperc==nil then
+		sevperc=0
+	end
+	if cyst~=nil then
+		local splat= cyst:FindFirstChild('Splat')
+		if splat~=nil then
+			splat:Emit(3+math.round(sevperc*3))
+			local sounds= cyst.Sounds2:GetChildren()
+			local sound= sounds[math.random(1,#sounds)]
+			cyst.Sound.SoundId=sound.SoundId
+			cyst.Sound:Play()
+			wait(0.5)
+			cyst:Destroy()
+			if module.covercheck(humanoid)==false then
+				return(true)
+			end
+		end
+	end
+	return(breath)
+end
+
+module.rash= function(humanoid,mod,sevperc)
+	local prime=humanoid.Parent.PrimaryPart
+	local breath=false
+	local template=nil
+	if prime~=nil then
+		local rashes= humanoid.Parent.PrimaryPart:GetChildren()
+		local count=0
+		local rpart=nil
+		for i=1, #rashes do
+			if rashes[i].ClassName=='Part' then
+				count=count+1
+				rpart=rashes[i]
+			end
+		end
+		local totalcysts= 25+math.round(sevperc*20)
+		if count<30 then
+			local new=nil
+			template= game.ServerStorage.Diseasepack.models.Blister
+			--wait(0.1)
+			breath= module.largencyst(2,prime,breath,sevperc,humanoid)
+			for i=1, 3 do
+				new= module.addcyst(template,prime,humanoid)
+				
+				if mod==2 or (mod==1 and sevperc>0.94) then
+					new.Size= new.Size+Vector3.new(0.5,0.5,0.5)
+					new.Color= Color3.new(0.8,0.8,0)
+					new.Transparency=0.8
+					new.Material=Enum.Material.Glass
+				end
+			end
+			if new~=nil then
+				local anims= template.Anims:GetChildren()
+				local anim= anims[math.random(1,#anims)]
+				local track= humanoid:LoadAnimation(anim)
+				track:Play()
+				local sounds= template.Sounds:GetChildren()
+				local sound= sounds[math.random(1,#sounds)]
+				new.Sound.SoundId=sound.SoundId
+				new.Sound:Play()
+			end
+		elseif rpart~=nil then
+			breath= module.largencyst(3,prime,breath,sevperc,humanoid)
+			--rpart.Splat:Emit(4)
+			--local sounds= rpart.Sounds2:GetChildren()
+			--local sound= sounds[math.random(1,#sounds)]
+			--rpart.Sound.SoundId=sound.SoundId
+			--rpart.Sound:Play()
+			--breath=true
+			--wait(0.5)
+			--rpart:Destroy()
+		end
+	end
+	if mod==1 and template~=nil then
+		local sdecal= template.SC
+		local randlocation= module.getrandbodypart(humanoid)
+		local sccheck= randlocation:FindFirstChild('SC')
+		if sccheck==nil then
+			module.coverpart(randlocation,sdecal)
+		end
+	end
+	return(breath)
+end
+module.gangrene= function(humanoid)
+	local randlocation= module.getlesserbodypart(humanoid)
+	if randlocation==nil or randlocation== humanoid.Parent.PrimaryPart then
+		module.rash(humanoid,1,0.95)
+	else
+		randlocation:Destroy()
+		local new= module.partanimsound(humanoid,'Gangrene')
+		new.Mist:Emit(100)
+		new.spread.Enabled=true
+	end
+end
+module.blindness= function(humanoid,player)
+	--local new= module.partanimsound(humanoid,'Shiver')
+	if player~=nil then
+		game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,4)
+	end
+end
+module.sweats= function(humanoid,player)
+	if player~=nil then
+		game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,6)
+		--local template, sound= module.sound(humanoid,'Sweats')
+		if humanoid.Health<15 then
+			game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,1)
+		end
+	end
+end
+module.coverpart= function(part,sdecal)
+	local new= sdecal:Clone()
+	new.Parent=part
+	new.Face='Front'
+	local new= sdecal:Clone()
+	new.Parent=part
+	new.Face='Back'
+	local new= sdecal:Clone()
+	new.Parent=part
+	new.Face='Left'
+	local new= sdecal:Clone()
+	new.Parent=part
+	new.Face='Right'
+end
+module.convulsions= function(humanoid,player)
+	if humanoid.PlatformStand==false and humanoid.Sit==false then
+		humanoid.PlatformStand=true
+		local prime= humanoid.Parent.PrimaryPart
+		local template= game.ServerStorage.Diseasepack.models.Convulse
+		local anims= template.Anims:GetChildren()
+		local anim= anims[math.random(1,#anims)]
+		local track= humanoid:LoadAnimation(anim)
+		track:Play()
+		if player~=nil then
+			game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,3)
+			game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0,0,0),0.5,1)
+			game.ReplicatedStorage.Effects:FireClient(player,Color3.new(0,0,0),0.3,2)
+		end
+		if prime~=nil then
+			prime.Velocity= prime.Velocity+ Vector3.new(0,-2,0)
+			prime.CFrame= prime.CFrame*CFrame.Angles(math.rad(math.random(-5,5)),math.rad(math.random(-5,5)),math.rad(math.random(-5,5)))
+			--for i=1, 10 do
+				--wait(0.4)
+				--if humanoid.Sit==false then
+					--prime.Velocity= prime.Velocity+ Vector3.new(0,-0.5,0)
+					--prime.CFrame= prime.CFrame*CFrame.Angles(math.rad(math.random(-2,2)/10),math.rad(math.random(-2,2)/10),math.rad(math.random(-2,2)/10))
+				--end
+			--end
+			wait(2.5)
+		end
+		humanoid.PlatformStand=false
+	end
+end
+module.shivers= function(humanoid,player)
+	local prime= humanoid.Parent.PrimaryPart
+	local new= module.partanimsound(humanoid,'Shiver')
+	if player~=nil then
+		game.ReplicatedStorage.fever:FireClient(player,humanoid.Health,3)
+	end
+	local sweat= new.Sweat
+	sweat.Parent= humanoid.Parent.Head
+	sweat.Enabled=true
+	wait(1.2)
+	sweat:Destroy()
+	new:Destroy()
+end
+module.givescripts= function(humanoid)
+	local new2= game.ReplicatedStorage.Diseaserep.Simplenpc:FindFirstChild('Animationsimple')
+	if new2~=nil then
+		new2= new2:Clone()
+		new2.Parent= humanoid.Parent
+		new2.Enabled=true
+	end
+	local new2= game.ReplicatedStorage.Diseaserep.Simplenpc:FindFirstChild('Events(simpleksf)')
+	if new2~=nil then
+		new2= new2:Clone()
+		new2.Parent= humanoid.Parent
+		new2.Enabled=true
+	end
+	local new2= game.ReplicatedStorage.Diseaserep.Simplenpc:FindFirstChild('findandchase')
+	if new2~=nil then
+		new2= new2:Clone()
+		new2.Parent= humanoid.Parent
+		new2.Enabled=true
+	end
+end
+module.removenpcoldscripts= function(humanoid)
+	local oldscript= humanoid.Parent:FindFirstChild('DecideDSS')
+	if oldscript~=nil then
+		oldscript:Destroy()
+	end
+	local oldscript= humanoid.Parent:FindFirstChild('Events(healthtouch)')
+	if oldscript~=nil then
+		oldscript:Destroy()
+	end
+	local oldscript= humanoid.Parent:FindFirstChild('Animation')
+	if oldscript~=nil then
+		oldscript:Destroy()
+	end
+end
+module.givemove= function(char)
+	local new4= workspace.clashcombat.Modules.NPC.Mainmove:Clone()
+	new4.Parent= char
+	new4.Enabled=true
+end
+module.givenpcfolder= function(char) 
+	local new2= game.ServerStorage.models.Template.NPC.Config:Clone()
+	new2.Parent= char
+	new2.Name='Config'
+	--local new3= game.ServerStorage.models.Template.NPC.routines:Clone()
+	--new3.Parent= char
+	--local new5= game.ServerStorage.models.Template.NPC.routine:Clone()
+	--new5.Parent= char
+	--local new5= game.ServerStorage.models.Template.NPC.backpack:Clone()
+	--new5.Parent= char
+
+end
+module.convertplayertonpc= function(humanoid)
+	humanoid.Parent.Archivable=true
+	--humanoid.Parent.charsetup:Destroy()
+	--humanoid.Parent.kickedplayermanager:Destroy()
+	local new= humanoid.Parent:Clone()
+	new.Parent=workspace
+	new:SetPrimaryPartCFrame(humanoid.Parent.PrimaryPart.CFrame)
+	return new.Humanoid
+end
+module.zombie= function(humanoid,vuln,origscript)
+	local config= humanoid.Parent:FindFirstChild('Config')
+	if config~=nil then
+		if humanoid.Parent.Config.Hostile.Value==false then
+			humanoid.Parent.Config.Hostile.Value=true
+			humanoid.Parent.Config.Chase.Value=1
+			humanoid.Parent.Team.Value= BrickColor.new('New Yeller')
+			humanoid.Parent.Config.Fightstyle.Value=3
+			module.removenpcoldscripts(humanoid)
+			module.givescripts(humanoid)
+			module.turnzomb(humanoid,origscript)
+			humanoid.Health= humanoid.Health+25
+		else
+			module.zombeffect(humanoid)
+		end
+	else--player
+		local oldh= humanoid
+		if humanoid.Parent.Team.Value~=BrickColor.new('New Yeller') then  ---replace player with zombie
+			local humanoid= module.convertplayertonpc(humanoid)
+			local new= humanoid.Parent
+			--local new2= workspace.clashcombat.NPCconfigs.SChaser:Clone()
+			module.givenpcfolder(new)
+			--module.givescripts(new.Humanoid)
+			module.zombie(new.Humanoid,humanoid.Parent.Vulnerability.Value,new.Humanoid.DSSDisease)
+			--module.givemove(new)
+			--humanoid.Parent.Team.Value= BrickColor.new('New Yeller')
+			--local new= game.ServerStorage.Diseasepack.Config:Clone()
+			--new.Parent= humanoid.Parent
+			--module.turnzomb(humanoid,origscript)
+			oldh.Health=0
+		else --shouldnt call anymore
+			module.zombeffect(humanoid)
+		end
+	end
+end
+module.zombeffect= function(humanoid)
+	local template= game.ServerStorage.Diseasepack.models.Zombiep
+	local sounds= template.Sounds:GetChildren()
+	--local anims= template.Anims:GetChildren()
+	local sound= sounds[math.random(1,#sounds)]
+	--local anim= anims[math.random(1,#anims)]
+	--local track= script.Parent:LoadAnimation(anim)
+	--track:Play()
+	local new= template:Clone()
+	new.Parent= workspace.Environment
+	new.Position= humanoid.Parent.Head.Position
+	new.Sound.SoundId= sound.SoundId
+	new.Sound:Play()
+	new.spread.Enabled=true
+	humanoid.WalkSpeed=humanoid.WalkSpeed+30
+	humanoid.Jump=true
+	wait(0.5)
+	humanoid.WalkSpeed=humanoid.WalkSpeed-30
+end
+module.changecolors= function(humanoid,color)
+	local colors= humanoid.Parent:FindFirstChild('Body Colors')
+	colors.HeadColor3= color
+	colors.TorsoColor3= color
+	colors.LeftArmColor3= color
+	colors.LeftLegColor3= color
+	colors.RightArmColor3= color
+	colors.RightLegColor3= color
+end
+module.turnzomb= function(humanoid,origscript)
+	if origscript~=nil then
+		module.changecolors(humanoid,Color3.fromRGB(0,150,0))
+		--if origscript.Stats.Changecolors.Value==true then
+			--module.changecolors(humanoid,Color3.fromRGB(0,150,0))
+		--end
+	end
+	local headcomps= humanoid.Parent.Head:GetChildren()
+	for i=1, #headcomps do
+		if headcomps[i].ClassName=='Decal' then
+			headcomps[i].Texture= 'http://www.roblox.com/asset/?id=181334082'
+		end
+	end
+	humanoid.WalkSpeed=28
+	humanoid.JumpPower=40
+	--workspace.mains.Events.zombify:Fire()
+end
+
+
+return module
