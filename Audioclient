@@ -1,0 +1,82 @@
+
+function checktheme()
+	local firingcount=0
+	local character= player.Character
+	if character~=nil then
+		local humanoid= character.Humanoid
+		local prime= character.PrimaryPart
+		if prime~=nil then
+			local plrpos= prime.Position
+			local workspacelot= workspace:GetChildren()
+			for i=1, #workspacelot do
+				local current= workspacelot[i]
+				local config= workspacelot[i]:FindFirstChild('Config')
+				if config~=nil then
+					local prime= current:FindFirstChildOfClass('Part')
+					if prime~=nil then
+						if (prime.Position-plrpos).Magnitude<120 then
+							local firing= config:FindFirstChild('Firing')
+							if firing~=nil then
+								if firing.Value==true then
+									--firingcount= firingcount+1
+									return(0.05)
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return(-0.05)
+	--if firingcount>0 then
+	--	if firingcount>4 then
+	--		firingcount=4
+	--	end
+	--	local volume= firingcount*0.25
+	--	if humanoid.Health<50 then
+	--		volume= volume+0.25
+	--	end
+	--	workspace.Music.Accompanymusic.Value.Volume=volume
+	--else
+	--	workspace.Music.Accompanymusic.Value.Volume=0
+	--end
+end
+function ensureplaying(music,old,timepos)
+	old.Playing=false
+	wait(0.1)
+	music.Playing=true
+	if timepos~=nil then
+		music.TimePosition=timepos
+	end
+	--workspace.Music.Currentmusic.Value.Playing=true
+	--workspace.Music.Accompanymusic.Value.Playing=true
+end
+player= game.Players.LocalPlayer
+totalvolume= workspace.Music.Totalvolume.Value
+ambientvolume= workspace.Music.Ambientvolume.Value
+workspace.Music.Updateclient.OnClientEvent:Connect(ensureplaying)
+humanoid=nil
+while true do
+	wait(2)
+	local change= checktheme()
+	local newaccvolume=workspace.Music.Accompanymusic.Value.Volume+change
+	if newaccvolume<0 then
+		newaccvolume=0
+	elseif newaccvolume>1 then
+		newaccvolume=1
+	end
+	if workspace.Music.AccompanyEnabled.Value==true then
+		workspace.Music.Accompanymusic.Value.Volume= newaccvolume
+		local newmainvolume= totalvolume-newaccvolume
+		if newmainvolume>ambientvolume then
+			newmainvolume=ambientvolume
+		end
+		workspace.Music.Currentmusic.Value.Volume=newmainvolume
+	else
+		if newaccvolume<ambientvolume then
+			newaccvolume=ambientvolume
+		end
+		workspace.Music.Currentmusic.Value.Volume= newaccvolume
+	end
+end
