@@ -1,0 +1,82 @@
+local module = {}
+
+module.findNearestTorso= function(pos,config,selfnpc)
+	local npctarget=nil
+	local dist = config.Range.Value
+	local list=workspace:GetChildren()
+	npctarget= module.checklist(pos,list,npctarget,dist,config,selfnpc)
+	return npctarget
+end
+
+module.checklist=function(pos,list,npctarget,dist,config,selfnpc)
+	for i = 1, #list do
+		local NPC = list[i]
+		if NPC.ClassName == "Model" then
+			local torso = NPC:findFirstChild("HumanoidRootPart")
+			local humanoid = NPC:findFirstChild("Humanoid")
+			if torso ~= nil and humanoid ~= nil and (humanoid.Health > 0) then
+				if (torso.Position - pos).magnitude < dist and module.sightcheck(NPC,config,selfnpc,false)==false and module.npcvalid(NPC,selfnpc)==true then
+					npctarget=torso
+					dist = (torso.Position - pos).magnitude
+				end
+			end
+		end
+	end
+	return npctarget
+end
+
+module.sightcheck=function(npc,config,selfnpc,seebehind) --dont get confused with the true false s going on here
+	if seebehind==true then 
+		return module.wallcheck(npc,config,selfnpc)
+	end
+	local furtherpos= selfnpc.Head.Position+selfnpc.Head.CFrame.LookVector*1
+	local headpos= selfnpc.Head.Position
+	local targpos= npc.Head.Position
+	local dist= (headpos-targpos).Magnitude
+	local furthdist= (furtherpos-targpos).Magnitude
+	if furthdist<dist or selfnpc.Name=='Karen' then
+		return(module.wallcheck(npc,config,selfnpc))
+	else
+		return(true)
+	end
+end
+module.wallcheck=function (npc,config,selfnpc)
+	local head= npc.Head
+	local tempCFrame= CFrame.new(selfnpc.Head.Position, head.Position)
+	local Shoot = false
+	local Ray = Ray.new(selfnpc.Head.Position, tempCFrame.LookVector*config.Range.Value)
+	local Wall, HitPosition, Normal, Material = workspace:FindPartOnRay(Ray, selfnpc)
+	if Wall~=nil and Wall.Parent~=npc and Wall.Parent~=selfnpc and Wall.Parent.Parent~= npc then
+		if config.Attackvehicles.Value==true then
+			if Wall.Anchored==false then
+				return(false)
+			else
+				return(true)
+			end
+		else
+			return(true)
+		end
+	else
+		return(false)
+	end
+end
+module.npcvalid=function(npc,selfnpc)
+	local player= game.Players:FindFirstChild(npc.Name)
+	local team= npc:FindFirstChild('Team')
+	if player~=nil and team==nil then
+		team=  player.TeamColor
+	elseif team~=nil then
+		team= team.Value
+	end
+	if team~=nil then
+		if team==selfnpc.Team.Value or (team==BrickColor.new('Bright green') and selfnpc.Team.Value~=BrickColor.new('New Yeller')) then
+			return(false)
+		else
+			return(true)
+		end
+	else
+		return(true)
+	end
+end
+
+return module
