@@ -1,0 +1,464 @@
+--Have all module codes parented to this
+wait(1)
+function wallcheck(torso)	
+	local cframe= CFrame.new(script.Parent.Parent.Head.Position,torso.Position)
+	local Raym = Ray.new(cframe.Position, cframe.LookVector*15)
+	local Wall, HitPosition= workspace:FindPartOnRay(Raym, torso)
+	if Wall~=nil then
+		return {Wall, HitPosition}
+	else
+		return false
+	end
+end
+
+function mutate()
+	diseasemodule.mutatedisease(script,vuln)
+	--variants.cdcvariantadd(script.Stats.Spread.Value,script.Stats.Severerate.Value,script.Variant.Value,workspace.mains.Values.Variants.Value,script.Stats,script.Symptomchance)
+	--script.Variant.Value= workspace.mains.Values.Variants.Value
+end
+function infect(character)
+	local nhumanoid = character:FindFirstChild('Humanoid')
+	if nhumanoid~=nil then
+		local virus= nhumanoid:FindFirstChild('DSSDisease')
+		if virus==nil then
+			local mchance=60- ((script.Specialisedstats.Mutationvariance.Value-1)^2)*5
+			if script.Stats.Type.Value~='Virus' then
+				mchance=mchance*1.25
+			end
+			if math.random(1,mchance)==1 then
+				mutate()
+			end
+			local newn= script.Parent.DSSDisease:clone()
+			newn.Parent= character.Humanoid
+			newn.Disabled=false
+			infected=infected+1
+			if infected==15 then
+				local ownchar= script.Parent.Parent
+				--workspace.mains.Events.Reward:Fire(player,5)
+			end
+		end
+	end
+end
+function potinfect(hit)
+	if tcooldown==false then
+		infect(hit.Parent)
+		tcooldown=true
+		wait(1)
+		tcooldown=false
+	end
+end
+function determineinfectprobability(character,distance,part)
+	local probability= (spread-distance)/spread --1
+	local roll= (math.random(1,250))/250 --1000
+	local mask= character:FindFirstChild('Mask')
+	if mask~=nil then 
+		probability= probability/ mask.Effectiveness.Value
+	end
+	local mask2= script.Parent.Parent:FindFirstChild('Mask')
+	if mask2~=nil then
+		probability= probability/mask2.Effectiveness.Value
+	end
+	if character:FindFirstChild('Vaccination1')~=nil then 
+		probability= probability/3
+	end
+	if character:FindFirstChild('Vaccination2')~=nil then 
+		probability= probability/3
+	end
+	local tuple= wallcheck(part)
+	local check=false
+	if tuple==false then
+		check=false
+	elseif tuple[1].Name~='Part' then
+		check=false
+	else
+		check=true
+	end
+	if check==false and roll<probability  then
+		return(true)
+	else
+		return(false)
+	end
+end
+function breath(pos)
+	if count> (-range)+2 then --don't infect immediately
+		local list=nil
+		list=workspace:GetChildren()
+		spread= script.Stats.Spread.Value
+		for i = 1, #list do
+			local NPC = list[i]
+			if NPC.ClassName == "Model" then
+				local humanoid = NPC:findFirstChild("Humanoid")
+				if humanoid~=nil then
+					local part = NPC.PrimaryPart
+					if part==nil then
+						part=NPC:FindFirstChildOfClass('Part')
+					end
+					if part~=nil then
+						local currentdistance= (part.Position - pos).magnitude
+						if part ~= nil and currentdistance<spread then
+							if determineinfectprobability(NPC,currentdistance,part)==true then
+								infect(NPC)
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+function integratedequation(whole,sample)--x^2 +16 to 1/3x^3 +16x --85.33333 (area above x axis)
+	sample= sample*(4/range)
+	local integral= (16*sample)- ((sample)^3)/3
+	local integral= integral*(whole/85.33333)
+	return(integral)
+end
+
+
+
+
+function zombeffect()
+	local template= game.ServerStorage.Diseasepack.models.Zombiep
+	local sounds= template.Sounds:GetChildren()
+	--local anims= template.Anims:GetChildren()
+	local sound= sounds[math.random(1,#sounds)]
+	--local anim= anims[math.random(1,#anims)]
+	--local track= script.Parent:LoadAnimation(anim)
+	--track:Play()
+	local new= template:Clone()
+	new.Parent= workspace.Environment
+	new.Position= script.Parent.Parent.Head.Position
+	new.Sound.SoundId= sound.SoundId
+	new.Sound:Play()
+	new.spread.Enabled=true
+	script.Parent.WalkSpeed=script.Parent.WalkSpeed+25
+	script.Parent.Jump=true
+	wait(0.5)
+	script.Parent.WalkSpeed=script.Parent.WalkSpeed-25
+end
+function turnzomb()
+	if script.Stats.Changecolors.Value==true then
+		changecolors(Color3.fromRGB(0,150,0))
+	end
+	local headcomps= script.Parent.Parent.Head:GetChildren()
+	for i=1, #headcomps do
+		if headcomps[i].ClassName=='Decal' then
+			headcomps[i].Texture= 'http://www.roblox.com/asset/?id=181334082'
+		end
+	end
+	script.Parent.WalkSpeed=26
+	script.Parent.JumpPower=40
+	--local new2= workspace.clashcombat.Modules.NPC:FindFirstChild('Events(healthtouch)')
+	--if new2~=nil then
+	--	new2= new2:Clone()
+	--	new2.Parent= script.Parent.Parent
+	--	new2.Enabled=true
+	--end
+end
+
+function healingcheck(position)
+	if count>-6 and count<6 then
+		if severity==1 then
+			if math.random(1,2)==1 and script.Parent.Health>40 then--hospitalcheck(position)==true
+				return(true)
+			else
+				return(false)
+			end
+		elseif severity==0 and script.Parent.Health<50 then--hospitalcheck(position)==false
+			return(false)
+		else
+			return(true)
+		end
+	else
+		return(true)
+	end
+end
+function healthrecord(lasthealth,difference)
+	healthtimer= healthtimer+1
+	if healthtimer>5 then
+		healthtimer=1
+	end
+	script.Lastdmg.Value=difference
+	local record= script.Healthrecords:FindFirstChild(tostring(healthtimer))
+	record.Value=lasthealth
+end
+function effects(symptoms,position)
+	local refvalue=count
+	--if count>0 then
+	--	refvalue= range-count
+	--end
+	local nextdmg= integratedequation(whole,refvalue)
+	local difference= nextdmg- prevdmg
+	if healingcheck(position)==true then
+		count=script.Stage.Value+1  --seperate them incase past code confusion (Ik this is bad)
+		script.Stage.Value=count
+		prevdmg= nextdmg
+	else
+		difference= difference*1.5
+		--count=count+1
+	end
+	if severity<=2 then
+		script.Parent.Health= script.Parent.Health- difference
+		healthrecord(script.Parent.Health,difference)
+	end
+	if severity<4 then
+		local chosensymptom= symptoms[math.random(1,#symptoms)]
+		if chosensymptom~=false then
+			local dobreath= diseasemodule.dosymptom(chosensymptom,severity,medicine,script.Parent,player,script.Stats.Type.Value,script,count,range)
+			if dobreath~=nil then
+				breath(script.Parent.Parent.PrimaryPart.Position)
+			end
+		end
+	end
+	if count>=20 then
+		cured=true
+	end
+	if vuln~= vulnobj.Value then
+		severity= calculateseverity(vulnobj.Value)
+	end
+end
+function setvulnerability()
+	medicine= script.Parent.Parent:FindFirstChild('Medicine')
+	if medicine==nil then
+		medicine= Instance.new('Folder')
+		medicine.Parent= script.Parent.Parent
+		medicine.Name='Medicine'
+	end
+	vulnobj= script.Parent.Parent:FindFirstChild('Vulnerability')
+	if vulnobj~=nil then
+		return(vulnobj.Value)
+	else
+		local newvulnvalue= Instance.new('NumberValue')
+		newvulnvalue.Parent= script.Parent.Parent
+		newvulnvalue.Name= 'Vulnerability'
+		newvulnvalue.Value= math.random(1,100)--keybit      vulnerability
+		vulnobj= newvulnvalue
+		return(newvulnvalue.Value)
+	end
+end
+function calculateseverity(vuln)
+	local severityfactor=4
+	if vuln<script.Stats.Criticalrate.Value then
+		severityfactor=0
+		if vuln<2 then
+			delayer=delayer*0.8
+		end
+	elseif vuln<script.Stats.Severerate.Value then
+		severityfactor=1
+	elseif vuln<script.Stats.Longeffectrate.Value then
+		severityfactor=2
+	elseif vuln<script.Stats.Symptomrate.Value then
+		severityfactor=3
+	else
+		delayer=delayer*0.65
+	end
+	return(severityfactor)
+end
+function removeblisters()
+	local rashes= script.Parent.Parent.PrimaryPart:GetChildren()
+	for i=1, #rashes do
+		if rashes[i].ClassName=='Part' then
+			rashes[i]:Destroy()
+		end
+	end
+	diseasemodule.removenecrosis(script.Parent)
+end
+function changecolors(color)
+	if script.Stats.Changecolors.Value==true then
+		local colors= script.Parent.Parent:FindFirstChild('Body Colors')
+		colors.HeadColor3= color
+		colors.TorsoColor3= color
+		colors.LeftArmColor3= color
+		colors.LeftLegColor3= color
+		colors.RightArmColor3= color
+		colors.RightLegColor3= color
+		local prime= script.Parent.Parent.PrimaryPart
+		if prime~=nil then
+			local parts= prime:GetChildren()
+			for i=1, #parts do
+				if parts[i].ClassName=='Part' then
+					parts[i].Color= color
+				end
+			end
+		end
+	end
+end
+function bindtouch()
+	if touchbinded~=nil then
+		touchbinded= script.Parent.Parent.PrimaryPart.Touched:Connect(potinfect)
+	end
+end
+function unanchor()
+	if script.Parent.Parent.PrimaryPart~=nil then
+		if script.Parent.Parent.PrimaryPart.Anchored==true then
+			local parts= script.Parent.Parent:GetChildren()
+			for i=1, #parts do
+				if parts[i]:IsA('BasePart') then
+					parts[i].Anchored=true
+					parts[i].Material= Enum.Material.Ice
+				end
+			end
+		end
+	end
+end
+function damagesetup(vuln)
+	--if game.Players:FindFirstChild(script.Parent.Parent.Name)==nil then
+	--	if script.Parent.Parent.Name=='Not infected' or script.Parent.Parent.Name=='Infected' then
+	--		script.Parent.Parent.Name= 'Infected'
+	--	elseif script.Parent.Parent.Name=='Not infected (sheilded)' then
+	--		script.Parent.Parent.Name= 'Infected (shielded)'
+	--	else
+	--		script.Parent.Parent.Name= 'Infected (masked)'
+	--	end
+	--end
+	local colors= script.Parent.Parent:FindFirstChild('Body Colors')
+	local oldcolors= script:FindFirstChild('oldcolor')
+	if oldcolors~=nil then
+		oldcolors:Destroy()
+	end
+	if colors~=nil then
+		local new= colors:Clone()
+		new.Parent= script
+		new.Name= 'oldcolor'
+		changecolors(Color3.fromRGB(255,0,0))
+		removeblisters()
+	end
+	local new= Instance.new('StringValue')
+	new.Parent= script.Parent.Parent
+	new.Name='HadDSSDisease'
+	local maskcheck= script.Parent.Parent:FindFirstChild('Mask')
+	if maskcheck~=nil then
+		if maskcheck.gear.Value~=nil then
+			if maskcheck.gear.Value:FindFirstChild('Infected')~=nil then
+				maskcheck.gear.Value.Infected.Value=true
+			end
+		end
+	end
+	--local primary= script.Parent.Parent.PrimaryPart
+	--if primary~=nil then
+	--	script.title.Value.Parent= primary
+	--	script.title.Value.Enabled=true
+	--end
+	local severityfactor= calculateseverity(vuln)
+	local symptoms= {false}
+	local check=false
+	--if severityfactor<4 then
+	if script.Stats.Type.Value=='Bacteria' then
+		bindtouch()
+	end
+	local symptomlist= script.Symptomchance:GetChildren()
+	script.Currentsymptoms:ClearAllChildren()
+	for i=1, #symptomlist do
+		local chance= (math.random(1,200)/2)
+		if chance<= symptomlist[i].Value then
+			local currentsymptom=symptomlist[i]
+			local symptchild= symptomlist[i]:FindFirstChildOfClass('NumberValue')
+			if symptchild~=nil then --potential worse cases
+				wait(0.01)
+				local chance= (math.random(1,200)/2)
+				if chance< symptchild.Value then
+					currentsymptom= symptchild
+				end
+			end
+			table.insert(symptoms,currentsymptom)
+			check=true
+			local new= symptomlist[i]:Clone()
+			new.Parent= script.Currentsymptoms
+			new.Name= symptomlist[i].Name
+			new.Value=60
+			if symptomlist[i].Name=='Rash' then
+				bindtouch()
+			end
+			--print(currentsymptom.Name)
+		end
+		wait(0.01)
+	end
+	--end
+	if check==false then
+		table.insert(symptoms,1,false)
+	end
+	return severityfactor, symptoms
+end
+diseasemodule= require(game.ServerStorage.Diseasepack.diseasemodule)
+if script.Parent.Parent:FindFirstChild('Configused')~=nil then --stops cars being infected lol
+	script.Disabled=true
+end
+if script.Parent.Health>0 then
+	touchbinded=nil
+	delayer=script.Progressionrate.Value --7
+	variants= require(game.ServerStorage.Diseasepack.variants)
+	vuln= setvulnerability()
+	severity, symptoms = damagesetup(vuln)
+	--workspace.Map.CDCBuilding.Functional.infectpoint:Fire(script.Parent.Parent:FindFirstChildOfClass('Part').Position)
+	range= 20 --15
+	count=-range
+	script.Stage.Value=count
+	cured=false
+	whole= script.Totalintegrateddmg.Value --96
+	prevdmg=integratedequation(whole,-range)
+	exhaustedcount=0
+	infected=0
+	player= game.Players:FindFirstChild(script.Parent.Parent.Name)
+	tcooldown=false
+	healthtimer=1
+
+	while cured==false do
+		if script.Parent.Parent~=nil then
+			position=script.Parent.Parent.Head.Position
+			breath(position)
+			if script.Parent.Health>0 then
+				effects(symptoms,position)
+			end
+		end
+		wait(delayer)
+	end
+end
+if script.Parent.Health>0 then
+	--if game.Players:FindFirstChild(script.Parent.Parent.Name)==nil then
+	--	script.title.Value.State.Text='Immune'
+	--	script.title.Value.State.TextColor3= Color3.fromRGB(0,255,255)
+	--	script.title.Value.State.TextStrokeColor3= Color3.fromRGB(0,170,170)
+	--end
+	local colors= script.Parent.Parent:FindFirstChild('Body Colors')
+	if colors~=nil then
+		if colors.HeadColor3==Color3.fromRGB(0,150,0) then
+			local config= script.Parent.Parent:FindFirstChild('Config')
+			if config~=nil then
+				config.Hostile.Value=false
+				config.Chase.Value=0
+				config.Fightstyle.Value=0
+			end
+			script.Parent.Parent.Team.Value= BrickColor.new('Bright green')
+			local oldscript= script.Parent.Parent:FindFirstChild('Decide (idle)')--DecideDSS
+			if oldscript~=nil then
+				oldscript:Destroy()
+			end
+			local oldscript= script.Parent.Parent:FindFirstChild('Usetool (throwable)')
+			if oldscript~=nil then
+				oldscript:Destroy()
+			end
+			local new2= game.ServerStorage.models.Template.NPC:FindFirstChild('DecideDSS')
+			if new2~=nil then
+				new2= new2:Clone()
+				new2.Parent= script.Parent.Parent
+				new2.Enabled=true
+			end
+		end
+		if script.Stats.Changecolors.Value==true then
+			changecolors(Color3.fromRGB(0,255,255))
+		end
+		local immunity= script.Immunity
+		immunity.Parent= script.Parent
+		immunity.Enabled=true
+		--workspace.mains.Values.casescured.Value=workspace.mains.Values.casescured.Value+1
+		script.Parent.Parent.Vulnerability.Value= script.Parent.Parent.Vulnerability.Value-6
+		if script.Parent.WalkSpeed<16 then
+			script.Parent.WalkSpeed=16
+		end
+		removeblisters()
+		unanchor()
+		if player~=nil then
+			game.ReplicatedStorage.fever:FireClient(player,script.Parent,5)
+		end
+	end
+	script.Disabled=true
+end
