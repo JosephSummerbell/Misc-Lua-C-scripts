@@ -1,0 +1,125 @@
+
+
+function npcvalid(npc)
+	local player= game.Players:FindFirstChild(npc.Name)
+	local team= npc:FindFirstChild('Team')
+	if player~=nil and team==nil then
+		team=  player.TeamColor
+	elseif team~=nil then
+		team= team.Value
+	end
+	if team~=nil then
+		if team==script.Parent.Team.Value then
+			return(false)
+		else
+			return(true)
+		end
+	else
+		return(true)
+	end
+end
+function wallcheck(npc)
+	local head= npc.Head
+	local tempCFrame= CFrame.new(script.Parent.Head.Position, head.Position)
+	local Shoot = false
+	local Ray = Ray.new(script.Parent.Head.Position, tempCFrame.LookVector*config.Range.Value)
+	local Wall, HitPosition, Normal, Material = workspace:FindPartOnRay(Ray, script.Parent)
+	if Wall~=nil and Wall.Parent~=npc and Wall.Parent~=script.Parent and Wall.Parent.Parent~= npc then
+		if attackvehicles==true then
+			if Wall.Anchored==false then
+				return(false)
+			else
+				return(true)
+			end
+		else
+			return(true)
+		end
+	else
+		return(false)
+	end
+end
+function sightcheck(npc)
+	local furtherpos= script.Parent.Head.Position+script.Parent.Head.CFrame.LookVector*1
+	local headpos= script.Parent.Head.Position
+	local targpos= npc.Head.Position
+	local dist= (headpos-targpos).Magnitude
+	local furthdist= (furtherpos-targpos).Magnitude
+	if furthdist<dist or seebehind==true then
+		return(wallcheck(npc))
+	else
+		return(true)
+	end
+end
+function checklist(pos,list,npctarget,dist,object)
+	for i = 1, #list do
+		local NPC = list[i]
+		if NPC.ClassName == "Model" then
+			local torso = NPC:findFirstChild("HumanoidRootPart")
+			local humanoid = NPC:findFirstChild("Humanoid")
+			if torso ~= nil and humanoid ~= nil and (humanoid.Health > 0) then
+				if (torso.Position - pos).magnitude < dist and sightcheck(NPC)==false and npcvalid(NPC)==true then
+					npctarget=torso
+					dist = (torso.Position - pos).magnitude
+				end
+			end
+		end
+	end
+	return npctarget
+end
+function findNearestTorso(pos)
+	local npctarget=nil
+	local dist = config.Range.Value
+	local list=workspace:GetChildren()
+	npctarget= checklist(pos,list,npctarget,dist)
+	return npctarget
+end
+config= script.Parent:WaitForChild('Config')
+wait(0.5)
+npcmanager= require(workspace.clashcombat.Modules.Npcmanager)
+--targetting= require(workspace.clashcombat.Modules.Targetting)
+timeout= config.Timeout.Value
+attackvehicles= config.Attackvehicles.Value
+seebehind= config.Seebehind.Value
+
+
+humanoid= script.Parent.Humanoid
+movementcount=0
+--refreshcount=0
+lastspot=nil
+spotted=false
+--total= 90
+--locchances = {{'Random',100}}
+--locchances, total= getchances()
+local waittime= script.timepercheck.Value
+--oldlocation=Vector3.new(0,0,0)
+oldweight=0
+weight=0
+pickedlocation=Vector3.new(0,0,0)
+lasttarget=nil
+
+old= script.Parent.Head.Position
+
+while true do --wait time moved to bottom
+	new=script.Parent.Head.Position
+	magnitude=(new-old).magnitude
+
+	if config.Hostile.Value==true then
+		target =findNearestTorso(script.Parent.PrimaryPart.Position)
+		--target= targetting.findNearestTorso(script.Parent.PrimaryPart.Position,config,script.Parent)
+		if target~=nil then
+			config.Target.Value= target
+			config.Firing.Value=true
+			lasttarget= target
+			config.LastTarget.Value=target
+		else
+			config.Firing.Value=false
+			config.Target.Value=nil
+			if script.Hostage.Value~=nil then
+				script.Parent.PrimaryPart.BodyGyro.MaxTorque= Vector3.new(0,70000,0)
+				script.Parent.PrimaryPart.BodyGyro.CFrame= CFrame.new(script.Parent.PrimaryPart.Position,script.Hostage.Value.PrimaryPart.Position)
+			end
+		end
+	end
+	old=new
+	wait(waittime)
+end
