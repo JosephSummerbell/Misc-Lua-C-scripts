@@ -1,0 +1,55 @@
+
+function findarea(areas)
+	local campos= cam.CFrame.Position
+	local location= nil
+	if false then --High priority presets
+		return(script.Preset.Insane)
+	end
+	for i=1, #areas do
+		local sound= areas[i].Music
+		local max= areas[i].Max.Position
+		local min= areas[i].Min.Position
+		if campos.X>min.X and campos.Z>min.Z and campos.Y>min.Y and campos.X<max.X and campos.Z<max.Z and campos.Y<max.Y then
+			if areas[i].Name=='Hospital' then
+				if workspace.Map.Hospital.Values.Codeblue.Value==true then
+					return(script.Preset.Codeblue)
+				else
+					return(sound)
+				end
+			else
+				return(sound)
+			end
+		end
+	end
+	if false then --low priority presets
+		return(script.Preset.Cave)
+	end
+end
+
+
+local areas= script.Scenes:GetChildren()
+cam= workspace.CurrentCamera
+local oldsound= script.Preset.Intro
+
+player= game.Players.LocalPlayer
+--script.Preset.Intro.Playing=false --idk why it doesnt already
+while true do
+	wait(2)
+	local sound= findarea(areas)
+	if oldsound~=sound then
+		oldsound.Playing=false
+		if script.Music.Value==true then
+			sound.TimePosition=0
+			sound.Playing=true
+			if sound.SoundId=='rbxassetid://a' then
+				workspace.Map.Capitol.club.discosound.Music.Volume=1
+			else
+				workspace.Map.Capitol.club.discosound.Music.Volume=0
+			end
+		end
+	end
+	if script.Music.Value==false then
+		oldsound.Playing=false
+	end
+	oldsound=sound
+end
