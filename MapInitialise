@@ -1,0 +1,185 @@
+function raycast(pointA,pointB,maxdifference)
+	local difference= (pointA-pointB).Magnitude
+	if difference<maxdifference then
+		local cf= CFrame.new(pointA,pointB)
+		local raycastResult = workspace:Raycast(pointA, cf.LookVector*difference)
+		if raycastResult then
+			if (raycastResult.Position-pointB).Magnitude<2.5 then
+				return(true)
+			else
+				return(false)
+			end
+		else
+			return(true)
+		end
+	end
+end
+
+local pathmaker= require(workspace.clashcombat.Modules.Pathmaker)
+local nodes= script.Parent.Astarmap:GetChildren()
+
+for i=1, #nodes do
+	nodes[i].Transparency=1
+	for j=1, #nodes do
+		if i<j then
+			if raycast(nodes[i].Position,nodes[j].Position,80)==true then
+				local new= Instance.new('ObjectValue')
+				new.Parent= nodes[i]
+				new.Value= nodes[j]
+				local new= Instance.new('ObjectValue')
+				new.Parent= nodes[j]
+				new.Value= nodes[i]
+			end
+		end
+	end
+end
+for i=1, #nodes do
+	local newmap= pathmaker.generatemap(nodes[i],nodes)
+	newmap= pathmaker.checkunvisited(nodes[i],{},newmap,0)
+	local newa= script.Parent.Nodemap:Clone()
+	newa.Parent= nodes[i]
+	for j=1, #newmap do
+		local new= script.Parent.Nodeinfo:Clone()
+		new.Parent= newa
+		new.Nodeobj.Value= newmap[j][1]
+		new.Nodedist.Value=newmap[j][2]function raycast(pointA,pointB,maxdifference)
+	local difference= (pointA-pointB).Magnitude
+	if difference<maxdifference then
+		local cf= CFrame.new(pointA,pointB)
+		local raycastResult = workspace:Raycast(pointA, cf.LookVector*difference)
+		if raycastResult then
+			if (raycastResult.Position-pointB).Magnitude<2.5 then
+				return(true)
+			else
+				return(false)
+			end
+		else
+			return(true)
+		end
+	end
+end
+
+local pathmaker= require(workspace.clashcombat.Modules.Pathmaker)
+local nodes= script.Parent.Astarmap:GetChildren()
+
+for i=1, #nodes do
+	nodes[i].Transparency=1
+	for j=1, #nodes do
+		if i<j then
+			if raycast(nodes[i].Position,nodes[j].Position,80)==true then
+				local new= Instance.new('ObjectValue')
+				new.Parent= nodes[i]
+				new.Value= nodes[j]
+				local new= Instance.new('ObjectValue')
+				new.Parent= nodes[j]
+				new.Value= nodes[i]
+			end
+		end
+	end
+end
+for i=1, #nodes do
+	local newmap= pathmaker.generatemap(nodes[i],nodes)
+	newmap= pathmaker.checkunvisited(nodes[i],{},newmap,0)
+	local newa= script.Parent.Nodemap:Clone()
+	newa.Parent= nodes[i]
+	for j=1, #newmap do
+		local new= script.Parent.Nodeinfo:Clone()
+		new.Parent= newa
+		new.Nodeobj.Value= newmap[j][1]
+		new.Nodedist.Value=newmap[j][2]
+	end
+endfunction raycast(pointA,pointB,maxdifference)
+	local difference= (pointA-pointB).Magnitude
+	if difference<maxdifference then
+		local cf= CFrame.new(pointA,pointB)
+		local raycastResult = workspace:Raycast(pointA, cf.LookVector*difference)
+		if raycastResult then
+			if (raycastResult.Position-pointB).Magnitude<2.5 then
+				return(true)
+			else
+				return(false)
+			end
+		else
+			return(true)
+		end
+	end
+end
+
+local pathmaker= require(workspace.clashcombat.Modules.Pathmaker)
+local nodes= script.Parent.Astarmap:GetChildren()
+
+for i=1, #nodes do
+	nodes[i].Transparency=1
+	for j=1, #nodes do
+		if i<j then
+			if raycast(nodes[i].Position,nodes[j].Position,80)==true then
+				local new= Instance.new('ObjectValue')
+				new.Parent= nodes[i]
+				new.Value= nodes[j]
+				local new= Instance.new('ObjectValue')
+				new.Parent= nodes[j]
+				new.Value= nodes[i]
+			end
+		end
+	end
+end
+for i=1, #nodes do
+	local newmap= pathmaker.generatemap(nodes[i],nodes)
+	newmap= pathmaker.checkunvisited(nodes[i],{},newmap,0)
+	local newa= script.Parent.Nodemap:Clone()
+	newa.Parent= nodes[i]
+	for j=1, #newmap do
+		local new= script.Parent.Nodeinfo:Clone()
+		new.Parent= newa
+		new.Nodeobj.Value= newmap[j][1]
+		new.Nodedist.Value=newmap[j][2]
+	end
+endfunction raycast(pointA,pointB,maxdifference)
+	local difference= (pointA-pointB).Magnitude
+	if difference<maxdifference then
+		local cf= CFrame.new(pointA,pointB)
+		local raycastResult = workspace:Raycast(pointA, cf.LookVector*difference)
+		if raycastResult then
+			if (raycastResult.Position-pointB).Magnitude<2.5 then
+				return(true)
+			else
+				return(false)
+			end
+		else
+			return(true)
+		end
+	end
+end
+
+local pathmaker= require(workspace.clashcombat.Modules.Pathmaker)
+local nodes= script.Parent.Astarmap:GetChildren()
+
+for i=1, #nodes do
+	nodes[i].Transparency=1
+	for j=1, #nodes do
+		if i<j then
+			if raycast(nodes[i].Position,nodes[j].Position,80)==true then
+				local new= Instance.new('ObjectValue')
+				new.Parent= nodes[i]
+				new.Value= nodes[j]
+				local new= Instance.new('ObjectValue')
+				new.Parent= nodes[j]
+				new.Value= nodes[i]
+			end
+		end
+	end
+end
+for i=1, #nodes do
+	local newmap= pathmaker.generatemap(nodes[i],nodes)
+	newmap= pathmaker.checkunvisited(nodes[i],{},newmap,0)
+	local newa= script.Parent.Nodemap:Clone()
+	newa.Parent= nodes[i]
+	for j=1, #newmap do
+		local new= script.Parent.Nodeinfo:Clone()
+		new.Parent= newa
+		new.Nodeobj.Value= newmap[j][1]
+		new.Nodedist.Value=newmap[j][2]
+	end
+end
+	end
+end
